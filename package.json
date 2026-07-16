@@ -2,9 +2,40 @@
   "name": "s-img",
   "version": "0.1.0",
   "description": "Pure TypeScript image manipulation for Node and Bun. No native binaries, no compile step.",
-  "type": "module",
+  "keywords": [
+    "image",
+    "image-processing",
+    "image-manipulation",
+    "resize",
+    "crop",
+    "rotate",
+    "thumbnail",
+    "png",
+    "jpeg",
+    "jpg",
+    "webp",
+    "gif",
+    "bmp",
+    "tiff",
+    "exif",
+    "typescript",
+    "pure-js",
+    "no-native",
+    "zero-dependency",
+    "bun",
+    "obsidian"
+  ],
   "license": "MIT",
   "author": "Abdulkader Safi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Abdulkader-Safi/s-img.git"
+  },
+  "homepage": "https://github.com/Abdulkader-Safi/s-img#readme",
+  "bugs": {
+    "url": "https://github.com/Abdulkader-Safi/s-img/issues"
+  },
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

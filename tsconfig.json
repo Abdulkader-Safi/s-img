@@ -9,7 +9,27 @@
     "rootDir": "src",
     "outDir": "dist",
     "declaration": true,
-    "sourceMap": true,
+    // Off, deliberately. features/bundle-size.md: "Source maps are not in the budget. They
+    // ship separately or not at all." They were shipping BROKEN: `files: ["dist"]` does not
+    // include src/, and the maps pointed at ../../../src/*.ts with no sourcesContent, so
+    // 260 KB of them could never resolve for anyone.
+    //
+    // Fixing them (inlineSources + declarationMap) worked but took the tarball from 377 KB
+    // to 715 KB, which is a strange thing to publish for a library whose entire claim is
+    // size. And they buy little here: the target is ES2022 with no downlevelling, so the
+    // emitted JS is the source with the type annotations removed, comments and all --
+    // stepping into dist/ is already readable.
+    //
+    // Nothing is lost locally either: the tests run straight from .ts via Node's type
+    // stripping, so no map has ever been used in this repo.
+    "sourceMap": false,
+    // The maps are published, so the sources have to come with them. Without this they
+    // point at ../../../src/*.ts, which `files: ["dist"]` does not ship -- 260 KB of maps
+    // that can never resolve, which is worse than no maps at all. Inlining is the option
+    // that keeps `files` to one directory and still lets a consumer step into real TS.
+    //
+    // Costs nothing at runtime: maps are not loaded unless a debugger asks, and no bundler
+    // puts them in its output, so the 150 KB core budget is untouched either way.
 
     "strict": true,
     "noUncheckedIndexedAccess": true,
