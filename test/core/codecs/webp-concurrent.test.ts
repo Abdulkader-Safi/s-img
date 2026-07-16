@@ -47,4 +47,9 @@ test('30 concurrent decodes from cold trigger exactly one load', async () => {
   // The distinction this pins: memoising the RESULT means all 30 see an empty cache and
   // all 30 start a load. Memoising the PROMISE means 29 of them await the first.
   assert.equal(reads, 1, `the module was loaded ${reads} times`);
+
+  // ...and decoding is enough to mark it loaded, so supportedFormats() stops calling it
+  // pending. A caller who only ever decodes never touches preload.
+  const { isWebpLoaded } = await import('../../../src/core/codecs/webp.ts');
+  assert.equal(isWebpLoaded(), true, 'a decode left WebP looking like it had never loaded');
 });
