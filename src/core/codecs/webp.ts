@@ -108,8 +108,12 @@ function fourcc(bytes: Uint8Array, at: number): string {
  * the plugin runs in a long-lived Electron process and 300 KB of WASM is not the memory
  * problem there.
  */
-let decoder: Promise<WebpDecoder> | undefined;
-let encoder: Promise<WebpEncoder> | undefined;
+/**
+ * Why the load failed, once it has. Recorded in ONE place, shared by both modules, so
+ * supportedFormats() can say why without re-triggering anything or holding a rejected
+ * promise it would have to catch.
+ */
+let failure: string | undefined;
 
 interface WebpDecoder {
   decode(bytes: Uint8Array): { width: number; height: number; data: Uint8ClampedArray } | null;
@@ -149,46 +153,77 @@ const MODULE_OPTIONS = {
   locateFile: (path: string) => path,
 };
 
-async function loadDecoder(): Promise<WebpDecoder> {
-  decoder ??= (async () => {
-    try {
-      const [{ default: factory }, { WASM_BASE64 }] = await Promise.all([
-        import('@jsquash/webp/codec/dec/webp_dec.js'),
-        import('./webp-wasm-dec.ts'),
-      ]);
-      return (await factory({ ...MODULE_OPTIONS, wasmBinary: fromBase64(WASM_BASE64) })) as WebpDecoder;
-    } catch (cause) {
-      decoder = undefined; // a failed load must not poison every later attempt
-      throw new SImgError('CODEC_LOAD_FAILED', `The WebP decoder could not be loaded: ${message(cause)}`, { cause });
-    }
-  })();
-  return decoder;
+/**
+ * Load once, ever. Both the success and the FAILURE are memoised.
+ *
+ * The promise is cached, not the result: two concurrent first-touches must await the same
+ * load rather than start a second one, so a batch of 30 WebP files triggers one load.
+ *
+ * The rejection is cached too, deliberately -- features/supported-formats.md is explicit
+ * that a failure is permanent for the process, and the reasoning holds: retrying a WASM
+ * instantiation 30 times during a batch is worse than failing once, and a runtime that
+ * blocks WebAssembly will block it again. An earlier version cleared the memo here.
+ *
+ * Once loaded, stays loaded. No unloading, no eviction. YAGNI: the plugin runs in a
+ * long-lived Electron process and 300 KB of WASM is not the memory problem there.
+ */
+function memoise<T>(what: string, load: () => Promise<T>): () => Promise<T> {
+  let promise: Promise<T> | undefined;
+  return () => {
+    // Marked here rather than at each call site, so decode, encode and preload cannot
+    // disagree about whether WebP is still "pending". Three places to remember is three
+    // places to forget.
+    started = true;
+    promise ??= load().catch((cause: unknown) => {
+      failure ??= message(cause);
+      throw new SImgError('CODEC_LOAD_FAILED', `The WebP ${what} could not be loaded: ${message(cause)}`, { cause });
+    });
+    return promise;
+  };
 }
 
-async function loadEncoder(): Promise<WebpEncoder> {
-  encoder ??= (async () => {
-    try {
-      const [{ default: factory }, { WASM_BASE64 }] = await Promise.all([
-        import('@jsquash/webp/codec/enc/webp_enc_simd.js'),
-        import('./webp-wasm-enc.ts'),
-      ]);
-      return (await factory({ ...MODULE_OPTIONS, wasmBinary: fromBase64(WASM_BASE64) })) as WebpEncoder;
-    } catch (cause) {
-      encoder = undefined;
-      throw new SImgError('CODEC_LOAD_FAILED', `The WebP encoder could not be loaded: ${message(cause)}`, { cause });
-    }
-  })();
-  return encoder;
-}
+const loadDecoder = memoise('decoder', async (): Promise<WebpDecoder> => {
+  const [{ default: factory }, { WASM_BASE64 }] = await Promise.all([
+    import('@jsquash/webp/codec/dec/webp_dec.js'),
+    import('./webp-wasm-dec.ts'),
+  ]);
+  return (await factory({ ...MODULE_OPTIONS, wasmBinary: fromBase64(WASM_BASE64) })) as WebpDecoder;
+});
+
+const loadEncoder = memoise('encoder', async (): Promise<WebpEncoder> => {
+  const [{ default: factory }, { WASM_BASE64 }] = await Promise.all([
+    import('@jsquash/webp/codec/enc/webp_enc_simd.js'),
+    import('./webp-wasm-enc.ts'),
+  ]);
+  return (await factory({ ...MODULE_OPTIONS, wasmBinary: fromBase64(WASM_BASE64) })) as WebpEncoder;
+});
+
+/** Whether a load has been STARTED. A failed load counts: it was attempted and it is over. */
+let started = false;
 
 /** Warm the modules so the first image open is not a visible stall. features/api-surface.md. */
 export async function preloadWebp(): Promise<void> {
   await Promise.all([loadDecoder(), loadEncoder()]);
 }
 
-/** True once the module is in memory. Used by supportedFormats() and by the tests. */
+/**
+ * True once a load has been started, whether or not it succeeded.
+ *
+ * "Started" rather than "finished" is what supportedFormats() needs: a format is pending
+ * only while nothing has tried yet.
+ */
 export function isWebpLoaded(): boolean {
-  return decoder !== undefined || encoder !== undefined;
+  return started;
+}
+
+/**
+ * Why WebP is unavailable, or undefined if nothing has failed.
+ *
+ * Reports rather than probes: calling this never triggers a load, which is what lets
+ * supportedFormats() stay synchronous and free.
+ */
+export function webpFailure(): string | undefined {
+  return failure;
 }
 
 // --- decode and encode ---------------------------------------------------------------

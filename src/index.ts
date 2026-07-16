@@ -24,6 +24,7 @@ export {
 } from './core/image.ts';
 
 export { FORMATS, sniff, type Format } from './core/formats.ts';
+export { supportedFormats, type FormatSupport } from './core/supported.ts';
 export { decode, encode, preload, type DecodeOptions, type EncodeOptions } from './core/dispatch.ts';
 
 // Codec-level entry points. `decode`/`encode` will dispatch to these once they land;
