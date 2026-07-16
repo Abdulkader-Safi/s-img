@@ -18,7 +18,7 @@ import { decode } from '../../src/core/dispatch.ts';
 const FIXTURES = new URL('../fixtures/', import.meta.url).pathname;
 
 async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
-  const dir = await mkdtemp(join(tmpdir(), 's-img-'));
+  const dir = await mkdtemp(join(tmpdir(), 'safi-image-'));
   try {
     await fn(dir);
   } finally {

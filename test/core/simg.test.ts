@@ -35,7 +35,7 @@ async function rejects(fn: () => Promise<unknown>, code: string): Promise<SImgEr
 // --- the PRD's example ---------------------------------------------------------------
 
 test("the PRD's example compiles and runs, verbatim", async () => {
-  // features/api-surface.md's acceptance criterion, with SImg and s-img substituted for
+  // features/api-surface.md's acceptance criterion, with SImg and safi-image substituted for
   // the PRD's placeholders. If this stops compiling, the headline API changed.
   const inputBuffer = read('png/rgba8.png'); // 16x16, so the crop below has to be smaller
   const out = await SImg.fromBuffer(inputBuffer)

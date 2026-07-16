@@ -1,5 +1,5 @@
 {
-  "name": "s-img",
+  "name": "safi-image",
   "version": "0.1.0",
   "description": "Pure TypeScript image manipulation for Node and Bun. No native binaries, no compile step.",
   "keywords": [
@@ -29,11 +29,11 @@
   "author": "Abdulkader Safi",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Abdulkader-Safi/s-img.git"
+    "url": "git+https://github.com/Abdulkader-Safi/safi-image.git"
   },
-  "homepage": "https://github.com/Abdulkader-Safi/s-img#readme",
+  "homepage": "https://github.com/Abdulkader-Safi/safi-image#readme",
   "bugs": {
-    "url": "https://github.com/Abdulkader-Safi/s-img/issues"
+    "url": "https://github.com/Abdulkader-Safi/safi-image/issues"
   },
   "type": "module",
   "exports": {

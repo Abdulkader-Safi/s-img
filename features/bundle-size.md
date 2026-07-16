@@ -83,7 +83,7 @@ not vary with our code. Two budgets, two lines.
 
 ## What keeps it small
 
-- **No dependencies.** The single biggest lever. `s-img` has zero runtime deps besides the
+- **No dependencies.** The single biggest lever. `safi-image` has zero runtime deps besides the
   WebP WASM. Every dep is a transitive tree and a size surprise, and the PRD's whole premise
   is that the artifact is small and self-contained. The ladder's rung 5 (use an installed
   dependency) is genuinely unavailable here, and that is fine, because rung 3 (stdlib —
@@ -102,7 +102,7 @@ not vary with our code. Two budgets, two lines.
 
 ## Tree-shaking, deliberately not a v1 feature
 
-Sub-path exports (`s-img/png`) so a caller pulls one codec: real, plausible, and not what
+Sub-path exports (`safi-image/png`) so a caller pulls one codec: real, plausible, and not what
 the plugin needs. The plugin's Format panel offers all five. Building the export map, the
 docs, and the tests for a use case with no user is speculative.
 

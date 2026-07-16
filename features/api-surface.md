@@ -4,10 +4,10 @@
 
 ## What it is
 
-The shape the plugin actually calls. Package name: **`s-img`** (safi-image).
+The shape the plugin actually calls. Package name: **`safi-image`**.
 
 ```typescript
-import { SImg } from 's-img';
+import { SImg } from 'safi-image';
 
 const out = await SImg
   .fromBuffer(inputBuffer)
@@ -102,7 +102,7 @@ The escape hatch exists, so the simple version is safe.
 
 ## Naming
 
-`SImg` as the exported class. `s-img` as the package. The PRD's example uses `ImageLib` from
+`SImg` as the exported class. `safi-image` as the package. The PRD's example uses `ImageLib` from
 `'your-lib'`, both placeholders.
 
 ## Use cases
@@ -127,7 +127,7 @@ The escape hatch exists, so the simple version is safe.
 
 ## Acceptance
 
-- The PRD's example compiles and runs, verbatim, with `SImg` and `s-img` substituted.
+- The PRD's example compiles and runs, verbatim, with `SImg` and `safi-image` substituted.
 - `.crop({width: -5})` throws synchronously, on that line, before any decode.
 - `.toFormat('webp')` on a chain never loads the WASM until `.toBuffer()` is awaited.
 - The chain and `Pipeline` produce byte-identical output for the same operations. Same code

@@ -1,6 +1,6 @@
-# s-img
+# safi-image
 
-Short for safi-image. Image editing for Node and Bun, written entirely in TypeScript.
+Image editing for Node and Bun, written entirely in TypeScript.
 No native binaries, no postinstall compile step, no prebuilt platform packages.
 
 ## What it does
@@ -41,40 +41,41 @@ it replaces. 558 tests, plus a Bun parity check and a size gate, on every PR.
 `features/index.md` is the plan: one file per feature, ordered by milestone. Every box is
 ticked; the handful of open sub-items under them are recorded gaps, not surprises.
 
-`docs/superpowers/specs/2026-07-16-s-img-setup-design.md` records the decisions those specs
-left open, including why HEIC was dropped and why the whole API is async.
-
-**[Full documentation is in the wiki](https://github.com/Abdulkader-Safi/s-img/wiki)** —
-[Getting Started](https://github.com/Abdulkader-Safi/s-img/wiki/Getting-Started),
-[API Reference](https://github.com/Abdulkader-Safi/s-img/wiki/API-Reference),
-[Formats](https://github.com/Abdulkader-Safi/s-img/wiki/Formats),
-[Previews and Performance](https://github.com/Abdulkader-Safi/s-img/wiki/Previews-and-Performance).
+**[Full documentation is in the wiki](https://github.com/Abdulkader-Safi/safi-image/wiki)** —
+[Getting Started](https://github.com/Abdulkader-Safi/safi-image/wiki/Getting-Started),
+[API Reference](https://github.com/Abdulkader-Safi/safi-image/wiki/API-Reference),
+[Formats](https://github.com/Abdulkader-Safi/safi-image/wiki/Formats),
+[Previews and Performance](https://github.com/Abdulkader-Safi/safi-image/wiki/Previews-and-Performance).
 
 ## Install
 
-Not on npm yet. Install it straight from GitHub:
+```bash
+npm i safi-image
+```
+
+Or straight from GitHub, if you want an unreleased commit:
 
 ```bash
-npm i github:Abdulkader-Safi/s-img
+npm i github:Abdulkader-Safi/safi-image
 ```
 
 npm clones the repo and builds it for you (`dist/` is not committed, so a `prepare` script
 compiles it on install). Pin a branch or a tag when you want to:
 
 ```bash
-npm i github:Abdulkader-Safi/s-img#main
+npm i github:Abdulkader-Safi/safi-image#main
 ```
 
 Requires Node 22.18+ or Bun. The package is ESM with bundled type declarations; a CJS
 consumer (an Obsidian plugin, say) gets there through its own bundler, which is what esbuild
 is for.
 
-Working on both repos at once? `npm link ../s-img` skips the reinstall on every change.
+Working on both repos at once? `npm link ../safi-image` skips the reinstall on every change.
 
 ## Using it
 
 ```typescript
-import { SImg } from "s-img";
+import { SImg } from 'safi-image';
 
 const out = await SImg.fromBuffer(bytes)
   .crop({ x: 200, y: 100, width: 800, height: 600 })
@@ -134,7 +135,7 @@ const scale = probe(bytes).width / preview.width; // probe() is microseconds, no
 Every failure is an `SImgError` with a `code`, never a raw `TypeError` from inside a decoder.
 
 ```typescript
-import { SImgError, UnsupportedFormatError, ImageTooLargeError } from 's-img';
+import { SImgError, UnsupportedFormatError, ImageTooLargeError } from 'safi-image';
 
 try {
   await SImg.fromBuffer(bytes).toFormat('webp').toBuffer();

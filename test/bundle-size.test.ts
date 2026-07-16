@@ -35,7 +35,7 @@ let dir: string;
 before(async () => {
   // src/ and the one script, plus node_modules symlinked rather than installed: size.mjs
   // needs esbuild and nothing else, and it resolves entryPoints relative to cwd.
-  dir = await mkdtemp(join(tmpdir(), 's-img-size-'));
+  dir = await mkdtemp(join(tmpdir(), 'safi-image-size-'));
   await cp(join(ROOT, 'src'), join(dir, 'src'), { recursive: true });
   await cp(join(ROOT, 'scripts', 'size.mjs'), join(dir, 'size.mjs'));
   await symlink(join(ROOT, 'node_modules'), join(dir, 'node_modules'));
