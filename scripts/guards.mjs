@@ -131,9 +131,12 @@ for (const file of (await walk(DIST)).filter((f) => f.endsWith('.js'))) {
 }
 
 // Guard 4: no `any` in the public types. Only meaningful once dist/ exists.
+// Comments are stripped first: doc comments carry the word "any" in ordinary prose
+// ("or any ancillary chunk"), and flagging those trains everyone to ignore the guard.
 for (const file of (await walk(DIST)).filter((f) => f.endsWith('.d.ts'))) {
-  const code = await readFile(file, 'utf8');
-  // `any` as a type position, not as part of a word like "anywhere" or "Company".
+  const raw = await readFile(file, 'utf8');
+  const code = stripComments(raw);
+  // `any` as a type, not part of a word like "anywhere" or "Company".
   for (const m of code.matchAll(/(?<![A-Za-z0-9_$])any(?![A-Za-z0-9_$])/g)) {
     const line = code.slice(0, m.index).split('\n').length;
     failures.push(`${relative(ROOT, file)}:${line}: \`any\` in the public API surface`);
