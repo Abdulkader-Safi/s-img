@@ -1,0 +1,14 @@
+{
+  // Typechecks the tests too. `tsconfig.json` stays build-only so `dist/` holds
+  // just the library. Same strictness either way.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    // Node 22's type stripping wants the real `.ts` extension in the specifier,
+    // which is what lets `node --test` run these with no build step and no tsx.
+    // Safe here only because nothing is emitted from this config.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "test"]
+}
