@@ -27,8 +27,8 @@ import { FORMATS, sniff, type Format } from './formats.ts';
 import { type RawImage, type RGBA } from './image.ts';
 import { crop, type CropOptions } from './transform/crop.ts';
 import { flip, type FlipOptions } from './transform/flip.ts';
-import { maxLongEdge, resize, type ResizeOptions } from './transform/resize.ts';
-import { type Resampling } from './transform/resample.ts';
+import { FITS, maxLongEdge, resize, type ResizeOptions } from './transform/resize.ts';
+import { assertResampling, type Resampling } from './transform/resample.ts';
 import { rotate, type RotateOptions } from './transform/rotate.ts';
 
 /** resize() and maxLongEdge() share a slot: they are the same stage. Last of either wins. */
@@ -186,6 +186,41 @@ export function validateSpec(spec: unknown): PipelineSpec {
   if (s['rotate'] !== undefined) {
     const angle = (s['rotate'] as Record<string, unknown> | null)?.['angle'];
     if (typeof angle !== 'number') throw new InvalidOptionError('pipeline.rotate.angle', angle, 'must be a number');
+  }
+
+  // The resize stage was not validated AT ALL, which is a wider hole than the one that led
+  // here: `{"resize":{"maxLongEdge":"banana"}}` reached applySpec and threw from inside a
+  // transform at RUN time, three steps and one stack frame away from the field that was
+  // wrong. The whole point of validating at construction is that the error names the field
+  // while the caller still has the settings file open.
+  if (s['resize'] !== undefined) {
+    const r = s['resize'];
+    if (typeof r !== 'object' || r === null || Array.isArray(r)) {
+      throw new InvalidOptionError('pipeline.resize', r, 'must be an object');
+    }
+    const stage = r as Record<string, unknown>;
+
+    // The two shapes of ResizeStage: a cap, or a real resize. Neither is a reason to accept
+    // an empty object -- that is a stage that says nothing, and silently doing nothing is
+    // how a preset stops working without anyone noticing.
+    const isCap = stage['maxLongEdge'] !== undefined;
+    if (!isCap && stage['width'] === undefined && stage['height'] === undefined) {
+      throw new InvalidOptionError('pipeline.resize', r, 'needs a maxLongEdge, a width, or a height');
+    }
+
+    for (const field of ['maxLongEdge', 'width', 'height'] as const) {
+      const value = stage[field];
+      if (value !== undefined && typeof value !== 'number') {
+        throw new InvalidOptionError(`pipeline.resize.${field}`, value, 'must be a number');
+      }
+    }
+    if (stage['upscale'] !== undefined && typeof stage['upscale'] !== 'boolean') {
+      throw new InvalidOptionError('pipeline.resize.upscale', stage['upscale'], 'must be a boolean');
+    }
+    if (stage['fit'] !== undefined && !(FITS as readonly unknown[]).includes(stage['fit'])) {
+      throw new InvalidOptionError('pipeline.resize.fit', stage['fit'], `must be one of ${FITS.join(', ')}`);
+    }
+    if (stage['resampling'] !== undefined) assertResampling(stage['resampling'], 'pipeline.resize.resampling');
   }
 
   if (s['format'] !== undefined) {

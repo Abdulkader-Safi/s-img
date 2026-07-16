@@ -10,5 +10,10 @@
     // Safe here only because nothing is emitted from this config.
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "test"]
+  // examples/ too. It was outside, and the cost showed up immediately: examples/tour.ts
+  // shipped `resampling: 'bicubic'`, which is not a kernel this library has, and nothing
+  // said so -- not the compiler, because the file was not checked, and not the runtime,
+  // because the option was not validated either. The example IS the documentation a
+  // consumer copies, so it has to compile like one.
+  "include": ["src", "test", "examples", "scripts"]
 }

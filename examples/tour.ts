@@ -82,7 +82,7 @@ heading("The chain");
 // crop -> rotate -> flip -> resize -> format. Say what you want; the library sequences it.
 const thumb = await SImg.fromBuffer(source)
   .crop({ x: 200, y: 100, width: 800, height: 600 })
-  .rotate(8, { resampling: "bicubic" })
+  .rotate(8, { resampling: "lanczos3" })
   .maxLongEdge(400)
   .background([255, 255, 255, 255]) // the corners rotation exposes, and JPEG has no alpha
   .toFormat("jpeg", { quality: 80 })

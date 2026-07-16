@@ -6,7 +6,7 @@
 import { InvalidOptionError } from '../errors.ts';
 import { createImage, type RawImage, type RGBA } from '../image.ts';
 import { crop } from './crop.ts';
-import { resampleTo, type Resampling } from './resample.ts';
+import { resampleTo, type Resampling, assertResampling } from './resample.ts';
 
 /** The plugin's existing limits. */
 const MIN_SIZE = 1;
@@ -15,13 +15,16 @@ const MAX_SIZE = 20000;
 /** Shared with rotate's fill and the encoder's alpha compositing. One rule to learn. */
 const DEFAULT_BACKGROUND: RGBA = [255, 255, 255, 255];
 
+/** As data, so the runtime check and the type cannot drift. See RESAMPLING. */
+export const FITS = ['fill', 'contain', 'cover'] as const;
+
 export interface ResizeOptions {
   width?: number;
   height?: number;
   /** Default true: the plugin's percentage chips go to 200%. */
   upscale?: boolean;
   /** Only meaningful when both width and height are given. Default 'fill'. */
-  fit?: 'fill' | 'contain' | 'cover';
+  fit?: (typeof FITS)[number];
   /** Default 'bilinear'. */
   resampling?: Resampling;
   /** Only used by fit: 'contain'. Default white. */
@@ -40,6 +43,7 @@ export function assertResizeOptions(options: ResizeOptions): void {
   }
   if (options.width !== undefined) assertSize(options.width, 'resize.width');
   if (options.height !== undefined) assertSize(options.height, 'resize.height');
+  if (options.resampling !== undefined) assertResampling(options.resampling, 'resize.resampling');
 }
 
 export function resize(image: RawImage, options: ResizeOptions): RawImage {
@@ -79,6 +83,7 @@ export function resize(image: RawImage, options: ResizeOptions): RawImage {
  */
 export function maxLongEdge(image: RawImage, size: number, resampling: Resampling = 'bilinear'): RawImage {
   assertSize(size, 'maxLongEdge.size');
+  assertResampling(resampling, 'maxLongEdge.resampling');
 
   const longest = Math.max(image.width, image.height);
   // Already under the cap: return the same buffer, so capping a folder where most files
