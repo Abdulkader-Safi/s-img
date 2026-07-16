@@ -73,6 +73,19 @@ test('UnsupportedFormatError does not itself throw on a short input', () => {
   assert.equal(new UnsupportedFormatError(new Uint8Array()).detectedMagic, '');
 });
 
+test('UnsupportedFormatError can explain a format it DID recognise', () => {
+  // Two different failures share this code. "We have never heard of this format" is the
+  // common one. The other is "this is plainly a JPEG, but a progressive one, which we
+  // cannot decode yet" -- and there the default message would be a lie that sends someone
+  // hunting a corruption bug that is not there.
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+  const e = new UnsupportedFormatError(jpeg, 'Progressive JPEG is not supported yet.');
+
+  assert.equal(e.code, 'UNSUPPORTED_FORMAT', 'still the same code: the taxonomy does not grow for this');
+  assert.equal(e.message, 'Progressive JPEG is not supported yet.');
+  assert.equal(e.detectedMagic, 'ff d8 ff e0 00 10', 'the magic is still attached for the bug report');
+});
+
 test('an empty input still explains itself', () => {
   const e = new UnsupportedFormatError(new Uint8Array());
   assert.ok(e.message.length > 0, 'a 0-byte file needs a message a human can act on');

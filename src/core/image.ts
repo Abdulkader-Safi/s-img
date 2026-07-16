@@ -10,6 +10,25 @@
 import { CorruptImageError, InvalidOptionError } from './errors.ts';
 
 /**
+ * The default ceiling on how many pixels any one image may occupy: 134M, or 512 MB of
+ * RGBA. Shared by every operation that allocates from a number it did not choose --
+ * a decoder reading a header, or rotate computing a bounding box.
+ *
+ * Deliberately NOT the 20000 x 20000 that decode.md originally stated: that is 400M
+ * pixels / 1.49 GB, which permits exactly the allocations the cap exists to stop. Two
+ * places in the spec proved it:
+ *
+ *   - raw-image.md calls 20000x20000 (1.6 GB) "past what a V8 typed array will
+ *     comfortably hold" -- so the cap allowed an image the spec itself calls unusable.
+ *   - rotate.md requires a 20000x1 rotated 45 degrees to throw. Its box is 14143x14143 =
+ *     200M pixels = 0.75 GB, which is UNDER 400M, so it would not have.
+ *
+ * 134M pixels clears any realistic photo (a 100MP scan is 400 MB) while catching both.
+ * Callers who genuinely want more pass their own limit.
+ */
+export const DEFAULT_MAX_PIXELS = 128 * 1024 * 1024;
+
+/**
  * RGBA, 8 bits per channel, row-major, top-left origin, no stride, non-premultiplied.
  *
  * Pixel `(x, y)` lives at `(y * width + x) * 4`.

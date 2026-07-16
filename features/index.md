@@ -41,7 +41,9 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 ## Milestone 2: JPEG, cheap transforms, preset resize
 
-- [ ] [codec-jpeg.md](codec-jpeg.md) — baseline DCT read and write.
+- [x] [codec-jpeg.md](codec-jpeg.md) — baseline DCT read and write.
+  - [ ] **Progressive JPEG.** Deliberately deferred by [codec-jpeg.md](codec-jpeg.md): baseline ships with a clear `UNSUPPORTED_FORMAT`, and this closes before [plugin-swap.md](plugin-swap.md). Real files are progressive; this is a real gap, not a nice-to-have.
+  - [ ] **Optimised Huffman tables on encode.** [codec-jpeg.md](codec-jpeg.md) waved this off as "2 to 5%, not worth a second pass". Measured against libjpeg it is 3% at quality 95 but **37% at quality 20**, and low quality is the preset pipeline's main job. The decision was made on a wrong number; re-make it deliberately.
 - [x] [rotate-90.md](rotate-90.md) — exact 90° step rotation, no resampling.
 - [x] [flip.md](flip.md) — horizontal and vertical mirroring.
 - [x] [max-long-edge.md](max-long-edge.md) — shrink-only preset resize.

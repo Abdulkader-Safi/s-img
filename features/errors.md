@@ -17,7 +17,8 @@ class SImgError extends Error {
 }
 
 type SImgErrorCode =
-  | 'UNSUPPORTED_FORMAT'    // magic bytes matched nothing we can read
+  | 'UNSUPPORTED_FORMAT'    // magic bytes matched nothing we can read, OR matched a
+                           //   format whose variant we cannot decode (see below)
   | 'CORRUPT_IMAGE'         // magic bytes matched, the rest did not parse
   | 'FORMAT_MISMATCH'       // header says PNG, extension said JPEG, we trust the header
   | 'INVALID_OPTION'        // crop outside bounds, resize to 0, angle out of range
@@ -30,10 +31,23 @@ Subclasses carry the context that makes the message actionable, because a UI tha
 "invalid crop" is useless and one that says "crop x=900 w=400 exceeds image width 1200" is
 not:
 
+**Built:** `UNSUPPORTED_FORMAT` turned out to cover two different failures. The one written
+here is "the magic bytes matched nothing" — a HEIC, a text file renamed to `.png`. The
+other showed up with the JPEG codec: the magic bytes matched *perfectly*, we know exactly
+what the file is, and we still cannot decode this **variant** of it (a progressive JPEG, an
+arithmetic-coded one, a 12-bit one). The code is right for both — the plugin's action is
+the same, "this file cannot be opened" — but the default message ("Not a supported image
+format") would be a lie for a file we clearly identified, and would send someone hunting a
+corruption bug that is not there. So the constructor takes an optional `reason` that
+replaces the message, and the taxonomy does not grow a code for it.
+
 ```typescript
 class UnsupportedFormatError extends SImgError {
   readonly code = 'UNSUPPORTED_FORMAT';
   readonly detectedMagic: string;   // first 12 bytes as hex, for the bug report
+
+  // Built (feat/codec-jpeg): the constructor also takes an optional `reason`.
+  constructor(bytes: Uint8Array, reason?: string);
 }
 
 class InvalidOptionError extends SImgError {
@@ -41,6 +55,7 @@ class InvalidOptionError extends SImgError {
   readonly option: string;          // 'crop.width'
   readonly value: unknown;
 }
+
 
 class CodecLoadError extends SImgError {
   readonly code = 'CODEC_LOAD_FAILED';
