@@ -21,17 +21,9 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 ## Milestone 1: core buffer, PNG, resize, crop
 
-- [x] [errors.md](errors.md) — typed error classes, thrown early, never a bare `Error`.
-      *(Moved ahead of raw-image: `createImage` and `assertValidImage` both have to throw,
-      and errors.md bans a bare `throw new Error(` anywhere in the codebase. Errors has no
-      dependencies of its own. `CodecLoadError` is deliberately absent until
-      `feat/codec-webp`, which is when the `Format` type it carries will exist.)*
+- [x] [errors.md](errors.md) — typed error classes, thrown early, never a bare `Error`. (Moved ahead of raw-image: `createImage` and `assertValidImage` both have to throw, and errors.md bans a bare `throw new Error(` anywhere in the codebase. Errors has no dependencies of its own. `CodecLoadError` is deliberately absent until `feat/codec-webp`, which is when the `Format` type it carries will exist.)*
 - [x] [raw-image.md](raw-image.md) — the `RawImage` pixel buffer type, the one currency the whole library trades in.
-- [x] **formats** — the `Format` union and the magic-byte sniffer, carved out of
-      [decode.md](decode.md)'s "Format sniffing" section. Not a spec file of its own.
-      *(Split out because decode needs `Format` before it can have a signature, and
-      decode with no codec to dispatch to is nothing. Identifying HEIC by name for the
-      error message lands with feat/decode, where the error is built.)*
+- [x] **formats** — the `Format` union and the magic-byte sniffer, carved out of [decode.md](decode.md)'s "Format sniffing" section. Not a spec file of its own. (Split out because decode needs `Format` before it can have a signature, and decode with no codec to dispatch to is nothing. Identifying HEIC by name for the error message lands with feat/decode, where the error is built.)*
 - [x] [codec-png.md](codec-png.md) — PNG read and write on Node’s `zlib`. Verified byte-identical to libpng on 120 real system PNGs.
 - [ ] [decode.md](decode.md) — `decode(bytes, opts)`, the size guard, codec dispatch.
 - [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
@@ -56,7 +48,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 - [x] [codec-bmp.md](codec-bmp.md) — BMP read and write.
 - [x] [codec-gif.md](codec-gif.md) — GIF read and write, static frames, quantisation.
-- [ ] [codec-tiff.md](codec-tiff.md) — TIFF read and write, uncompressed and LZW.
+- [x] [codec-tiff.md](codec-tiff.md) — TIFF read and write, uncompressed and LZW.
 - [ ] [strip-metadata.md](strip-metadata.md) — EXIF, GPS and ICC removal, per codec.
 - [ ] [format-quality.md](format-quality.md) — `toFormat()` and the quality option.
 
@@ -84,6 +76,4 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 ## Explicitly not in v1
 
-AVIF (no pure JS AV1 codec exists). Browser build. Animated GIF. Preset storage,
-UI state, preview rendering — those stay in the plugin. Multi-page TIFF and
-JPEG-in-TIFF. See the individual codec files for what each one does and does not cover.
+AVIF (no pure JS AV1 codec exists). Browser build. Animated GIF. Preset storage, UI state, preview rendering — those stay in the plugin. Multi-page TIFF and JPEG-in-TIFF. See the individual codec files for what each one does and does not cover.
