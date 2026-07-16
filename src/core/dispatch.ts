@@ -33,8 +33,20 @@ export interface DecodeOptions {
   maxPixels?: number;
 }
 
-/** Format-conditional, so `quality` exists only where it means something. */
-export type EncodeOptions<F extends Format> = F extends 'jpeg'
+/**
+ * Format-conditional, so `quality` exists only where it means something.
+ *
+ * Named FormatOptions rather than EncodeOptions because it is what BOTH doors take --
+ * `encode(img, 'jpeg', ...)` and `.toFormat('jpeg', ...)` -- and a type with two names is
+ * a type a reader has to check twice. features/encode.md called it EncodeOptions and three
+ * other specs called it this; the majority and the better name agree, and nothing had
+ * shipped yet, so it is this.
+ *
+ * The `Record<string, never>` on png is what makes the error land: an object literal with
+ * `quality` has an excess property against a type that permits none, and TypeScript's
+ * excess-property check fires on the literal. `{}` would accept anything object-shaped.
+ */
+export type FormatOptions<F extends Format> = F extends 'jpeg'
   ? JpegEncodeOptions
   : F extends 'gif'
     ? GifEncodeOptions
@@ -167,7 +179,7 @@ export async function decode(bytes: Uint8Array, opts: DecodeOptions = {}): Promi
 export async function encode<F extends Format>(
   image: RawImage,
   format: F,
-  opts?: EncodeOptions<F>,
+  opts?: FormatOptions<F>,
 ): Promise<Uint8Array> {
   const codec = CODECS[format];
   if (codec === undefined) {
