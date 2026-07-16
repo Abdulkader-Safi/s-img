@@ -38,6 +38,7 @@ const FILES: readonly (readonly [format: Format, path: string, w: number, h: num
   ['gif', 'gif/basic.gif', 32, 32],
   ['bmp', 'bmp/rgb24.bmp', 16, 16],
   ['tiff', 'tiff/rgb-none.tif', 16, 16],
+  ['webp', 'webp/lossless.webp', 24, 16],
 ];
 
 for (const [format, path, width, height] of FILES) {
@@ -338,10 +339,9 @@ test('encode drops the EXIF orientation it applied on decode', async () => {
 
 // --- guards against the codecs drifting apart ---------------------------------------
 
-test('every format in FORMATS except webp round-trips through the dispatch table', async () => {
+test('every format in FORMATS round-trips through the dispatch table', async () => {
   // A new codec added to FORMATS but not wired into the table would otherwise fail only
-  // at the call site that happened to ask for it. webp is lazily loaded and lands in
-  // features/codec-webp.md.
+  // at the call site that happened to ask for it.
   const img = createImage(4, 4);
   img.data.fill(128);
   for (const format of FILES.map(([f]) => f)) {

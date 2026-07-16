@@ -22,11 +22,11 @@ Decode-only in pure JS is a bit more plausible but still large and still slow, a
 encode anyway (WebP is the format the plugin wants people to *convert to* — it is the whole
 size-saving story). So: one WASM module, both directions.
 
-## Open question Q4: which build
+## Q4, ANSWERED: which build
 
 The PRD asks: wrap jSquash's binary, or build a minimal libwebp ourselves?
 
-**Recommendation: wrap jSquash.**
+**Decided: wrap jSquash.** The spike below settled it.
 
 - `@jsquash/webp` is a maintained, tested libwebp build from the Squoosh lineage, with
   separate encode and decode modules so we can lazy-load them independently — a plugin that
@@ -37,12 +37,49 @@ The PRD asks: wrap jSquash's binary, or build a minimal libwebp ourselves?
   that culture even if the artifact ships prebuilt.
 - The ladder applies: an existing dependency solves this. Take it.
 
-The reason it is still a question and not a decision: jSquash targets browsers and its
-loader may need a shim to find the `.wasm` next to the `.js` under Node and Bun, and inside
-an Obsidian plugin bundle (which is esbuild'd into a single file, so `import.meta.url` may
-not point anywhere useful). **Prototype the load path inside an actual Obsidian plugin
-before committing.** If that fight turns out worse than an Emscripten build, revisit. Do
-this spike early in the milestone, not at the end — it is the only real unknown here.
+### The spike, run first, as this file demanded
+
+The fear was right, and worse than expected. jSquash's Emscripten glue locates its `.wasm`
+relative to `import.meta.url` and **fetches** it. Measured:
+
+| | |
+|---|---|
+| Bun | works — Bun's `fetch` resolves `file://` URLs |
+| Node | `fetch failed` — undici will not fetch `file://`, and the glue's Node branch is a stub that throws `not implemented... yet...` |
+| esbuild bundle | `fetch failed` — the `.wasm` is not bundled, and `import.meta.url` now points at the bundle |
+
+So the load path is broken in two of the three targets out of the box, and the one that
+matters most is an esbuild bundle, because **an Obsidian plugin is an esbuild bundle**: a
+single `main.js` with no `.wasm` shipped beside it. Every fix that keeps the `.wasm` as a
+separate file fails there.
+
+The glue accepts a `wasmBinary` override, which works in all three. That leaves only the
+question of where the bytes come from, and the answer that needs *nothing* from the
+environment — no `fs`, no `fetch`, no `import.meta.url`, no bundler config — is "from the
+module itself". So the WASM is base64'd into a generated TypeScript module by
+`scripts/gen-wasm.mjs`, behind a dynamic import. That also keeps `src/core` host-free,
+which the guard enforces anyway.
+
+Two further shims the spike forced:
+
+- **`locateFile` must be passed**, always. The glue picks its path with
+  `if (Module["locateFile"]) {...} else { new URL("x.wasm", import.meta.url) }`, and esbuild
+  rewrites `import.meta` to `{}` when emitting CJS — which Obsidian requires — so that
+  `new URL` throws `Invalid URL` before a byte is read. Supplying `locateFile` takes the
+  first branch, so the line that breaks never runs. What it returns is irrelevant.
+- **The full `WebPConfig` struct must be passed** on encode. Emscripten's embind reads each
+  field by name; a missing one is `Missing field: "image_hint"` thrown from inside the WASM,
+  not a default. Taken from jSquash's own `meta.js` so a libwebp bump cannot silently
+  become our bug.
+
+The cost is base64's 33%, which gzip only partly returns (measured: ~137% of the raw
+gzipped size). It is paid only by a caller who touches a WebP, and decode and encode are
+separate modules so a plugin that only reads WebP never carries the encoder: **66 KB
+gzipped for the decoder, 168 KB for the encoder, and 0 KB for anyone who touches neither.**
+
+Still open: the same path inside a real Obsidian plugin, deferred with
+[plugin-swap.md](plugin-swap.md). The design was chosen to need nothing from its
+environment precisely so that test is a formality — but it is not discharged until it runs.
 
 ## Loading
 

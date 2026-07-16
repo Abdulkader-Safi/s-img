@@ -55,7 +55,8 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 ## Milestone 5: WebP
 
-- [ ] [codec-webp.md](codec-webp.md) — libwebp WASM, lazy-loaded, `preload()` escape hatch.
+- [x] [codec-webp.md](codec-webp.md) — libwebp WASM, lazy-loaded, `preload()` escape hatch.
+  - [ ] **The Obsidian half of the load-path spike.** Q4 asked for the load path to be prototyped inside a real plugin before committing. Node, Bun and an esbuild'd CJS bundle are all proven; the plugin itself is deferred with [plugin-swap.md](plugin-swap.md). The design was chosen to need nothing from its environment precisely so that test is a formality, but it is not discharged until it runs.
 - [ ] [supported-formats.md](supported-formats.md) — `supportedFormats()` runtime probe.
 
 ## Milestone 6: the API the plugin actually calls

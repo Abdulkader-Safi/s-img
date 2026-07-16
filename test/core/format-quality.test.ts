@@ -78,6 +78,16 @@ test('quality on a lossless format throws at runtime too', async () => {
   assert.match(err.message, /png takes no options/);
 });
 
+test('webp takes quality and lossless, and nothing else', async () => {
+  // The one format that is both lossy and lossless, so `quality` is legal here AND
+  // `lossless` is. Neither is legal anywhere else.
+  const img = createImage(2, 2);
+  assert.ok((await encode(img, 'webp', { quality: 60 })).length > 0);
+  assert.ok((await encode(img, 'webp', { lossless: true })).length > 0);
+  const err = await rejects(() => encode(img, 'webp', { colors: 4 } as never), 'INVALID_OPTION');
+  assert.match(err.message, /webp takes only quality, lossless/);
+});
+
 test('every lossless format rejects quality at runtime, naming what it does take', async () => {
   const img = createImage(2, 2);
   const CASES: readonly (readonly [Format, RegExp])[] = [
@@ -155,13 +165,14 @@ const MATRIX: readonly (readonly [Format, string])[] = [
   ['gif', 'gif/basic.gif'],
   ['bmp', 'bmp/rgb24.bmp'],
   ['tiff', 'tiff/rgb-none.tif'],
+  ['webp', 'webp/lossless.webp'],
 ];
 
 for (const [from, path] of MATRIX) {
   for (const [to] of MATRIX) {
     test(`${from} converts to ${to}`, async () => {
       // One loop, and it catches an entire class of "we never tried TIFF to GIF" bug.
-      // webp joins the matrix in features/codec-webp.md.
+      // All six formats, both directions, 36 conversions.
       const src = await decode(read(path));
       const out = await decode(await encode(src, to));
       assert.deepEqual([out.width, out.height], [src.width, src.height]);
