@@ -35,7 +35,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 ## Milestone 2: JPEG, cheap transforms, preset resize
 
 - [x] [codec-jpeg.md](codec-jpeg.md) — baseline DCT read and write.
-  - [ ] **Progressive JPEG.** Deliberately deferred by [codec-jpeg.md](codec-jpeg.md): baseline ships with a clear `UNSUPPORTED_FORMAT`, and this closes before [plugin-swap.md](plugin-swap.md). Real files are progressive; this is a real gap, not a nice-to-have.
+  - [ ] **Progressive JPEG.** Deliberately deferred by [codec-jpeg.md](codec-jpeg.md): baseline ships with a clear `UNSUPPORTED_FORMAT`. Real files are progressive; this is a real gap, not a nice-to-have.
   - [ ] **Optimised Huffman tables on encode.** [codec-jpeg.md](codec-jpeg.md) waved this off as "2 to 5%, not worth a second pass". Measured against libjpeg it is 3% at quality 95 but **37% at quality 20**, and low quality is the preset pipeline's main job. The decision was made on a wrong number; re-make it deliberately.
 - [x] [rotate-90.md](rotate-90.md) — exact 90° step rotation, no resampling.
 - [x] [flip.md](flip.md) — horizontal and vertical mirroring.
@@ -56,7 +56,6 @@ the list is sorted so each item's dependencies are already ticked above it.
 ## Milestone 5: WebP
 
 - [x] [codec-webp.md](codec-webp.md) — libwebp WASM, lazy-loaded, `preload()` escape hatch.
-  - [ ] **The Obsidian half of the load-path spike.** Q4 asked for the load path to be prototyped inside a real plugin before committing. Node, Bun and an esbuild'd CJS bundle are all proven; the plugin itself is deferred with [plugin-swap.md](plugin-swap.md). The design was chosen to need nothing from its environment precisely so that test is a formality, but it is not discharged until it runs.
 - [x] [supported-formats.md](supported-formats.md) — `supportedFormats()` runtime probe.
 
 ## Milestone 6: the API the plugin actually calls
@@ -69,13 +68,8 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [x] [fast-decode.md](fast-decode.md) — downsample during decode for the live preview path.
 - [x] [type-safety.md](type-safety.md) — strict types, `.toFormat('png', { quality })` is a compile error.
 - [x] [file-io.md](file-io.md) — the `fs` boundary, kept out of the pixel code.
-- [ ] [bundle-size.md](bundle-size.md) — the size budget and how it gets enforced in CI.
+- [x] [bundle-size.md](bundle-size.md) — the size budget and how it gets enforced in CI.
 
-## Milestone 7: integration
-
-- [ ] [plugin-swap.md](plugin-swap.md) — replace ImageMagick in the Obsidian plugin, confirm Sync works.
-
----
 
 ## Explicitly not in v1
 

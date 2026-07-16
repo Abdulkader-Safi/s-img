@@ -47,6 +47,37 @@ failure. A budget nobody enforces is a wish.
 The delta printout is the useful half: "this PR added 12 KB" is what stops a slow slide.
 `size-limit` does both and is one config file. Use it rather than writing a script.
 
+**Built, and NOT with size-limit.** The deviation, recorded rather than left silent: the
+reason given above is that size-limit does both halves. `scripts/size.mjs` now does both, in
+~40 lines, with no dependency -- and it does one thing size-limit does not, which turned out
+to be the only check here that ever caught anything (below). Adding a devDependency tree to
+a project whose headline claim is "no dependencies", in order to replace a working script
+with a less capable one, is not a trade worth making. `.github/workflows/ci.yml` runs it.
+
+**What "the core" means, and why it is not the entry file.** The core is measured as the
+entry PLUS the transitive closure of its static imports -- what a consumer's runtime fetches
+before it can call anything. This is not pedantry, it is the entire check:
+
+> The first version measured `index.js` alone. Planting the exact regression this spec
+> predicts -- making the WebP `import()` static -- did **not** fail it. With code splitting
+> on, esbuild hoists a statically-imported module into a shared *chunk* rather than inlining
+> it, so `index.js` stayed 23 KB and pristine while eagerly depending on a 190 KB chunk
+> sitting next to it. The check passed, at 15.5% of budget, with the disaster fully present.
+
+Measured as the eager closure, the same plant reports 242.5 KB and fails twice over. The
+lesson generalises past this project: "the bundle" is a reachability question, not a file.
+
+**The WASM assertion looks for the WASM.** The spec says "assert on the file list, not just
+the size", and the first version did the opposite -- `text.includes('WEBP') && text.length >
+100 KB` -- which would pass happily if the WASM were inlined while something else shrank. It
+now looks for `AGFzbQ`, the base64 of every WASM module's `\0asm` magic. Presence is proof;
+absence is proof. Plus a self-check that the WASM is in *some* chunk, because "not in the
+core" is trivially true of a build where it does not exist.
+
+Both are pinned in `test/bundle-size.test.ts`, which plants the static import and watches
+the check fail. The spec called it "a good test of the check". It was: it is what found the
+bug in the check.
+
 Track the WASM separately: it is a static file, its size is whatever libwebp is, and it does
 not vary with our code. Two budgets, two lines.
 
@@ -96,17 +127,19 @@ there if it ever matters.)*
 - **What counts as "the bundle".** The library's own code, excluding `node:` builtins,
   excluding the WASM. State it in the config so the number is not arguable.
 - **The plugin's final size** is what actually matters to Sync, and it includes the plugin's
-  own UI code. The library's budget is a proxy. Milestone 7 measures the real thing
-  ([plugin-swap.md](plugin-swap.md)).
+  own UI code. The library's budget is a proxy for it, and a proxy is all this repo can
+  measure -- the swap itself lives in the plugin's own project.
 - **Source maps** are not in the budget. They ship separately or not at all.
 
 ## Acceptance
 
-- CI measures min+gzip on every PR and fails over 150 KB.
+- CI measures min+gzip on every PR and fails over 150 KB. **Done** -- 23.2 KB, 15.5% of it.
 - The delta vs the previous commit is printed on every PR.
 - The WebP WASM is provably absent from the core bundle (assert on the file list, not just
   the size).
-- A dynamic `import()` survives the plugin's esbuild config as a real chunk. Verified in
-  milestone 7, and it is the thing most likely to have quietly regressed.
+- A dynamic `import()` survives the plugin's esbuild config as a real chunk. **Done** for
+  this repo's own esbuild config -- `test/bundle-size.test.ts` plants the static import and
+  watches the check fail. Confirming it against the PLUGIN's config belongs to the plugin's
+  project; it is the thing most likely to have quietly regressed.
 - The first measurement happens in **milestone 1**, with just PNG, so the trend line exists
   from the start.

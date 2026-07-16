@@ -1,0 +1,91 @@
+name: CI
+
+# features/bundle-size.md: "A CI check that fails the build over budget. Not a warning, not
+# a comment on the PR -- a failure. A budget nobody enforces is a wish."
+#
+# The library targets Node and Bun (features/runtime-support.md), so both run. A test suite
+# that only ever runs on the author's laptop, on the author's runtime, is the other kind of
+# wish.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to a PR makes the first run's answer worthless. Don't pay for it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: types, guards, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # `npm run check` is tsc + guards + tests, which is what runs locally. Kept as one
+      # command on purpose: a CI that checks something different from the pre-commit command
+      # is a CI that fails for reasons nobody can reproduce.
+      - run: npm run check
+      - run: npm run build
+
+  bun:
+    name: bun
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+      - run: npm ci
+      # The smoke test, not the suite: the suite is Node's test runner. This asks the one
+      # question that matters -- does the library actually work on the other runtime.
+      - run: npm run test:bun
+
+  size:
+    name: bundle size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the delta needs the base commit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+
+      # The gate. Over 150 KB, or the WASM eagerly reachable from the entry, and this fails.
+      - name: Check the budget
+        run: npm run check:size
+
+      - name: Measure this branch
+        run: node scripts/size.mjs --json > /tmp/head.json
+
+      # The delta is informational and must never be the reason a PR is red -- so a failure
+      # to MEASURE the base (a base older than these scripts, a worktree that will not
+      # build) degrades to "no baseline" rather than failing the job.
+      - name: Measure the base
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        # Through env, never interpolated into the script body. A SHA is not attacker-
+        # controlled text and this workflow has no secrets to steal, so nothing here is
+        # exploitable today -- but `${{ }}` inside a `run:` is pasted in as raw shell before
+        # bash ever sees it, and that is the habit that turns one future edit (a branch
+        # name, a PR title) into a command injection. The safe form costs one line.
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add /tmp/base "$BASE_SHA"
+          ln -s "$PWD/node_modules" /tmp/base/node_modules
+          cd /tmp/base && node scripts/size.mjs --json > /tmp/base.json
+
+      - name: Report
+        run: node scripts/size-delta.mjs /tmp/base.json /tmp/head.json >> "$GITHUB_STEP_SUMMARY"
