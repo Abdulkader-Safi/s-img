@@ -106,16 +106,25 @@ codec-per-file split keeps the module graph clean enough that sub-path exports
 (`s-img/png`) stay possible later without a refactor — explicitly not a v1 feature
 (`bundle-size.md`), just a door left open.
 
-## The two guards
+## The guards
 
 `pnpm check:guards` enforces what the specs assert and nothing else:
 
 1. **No `fs` under `src/core/`.** `node:zlib` in `codecs/png.ts` is the one allowed
    exception, and it is the thing a browser build would swap for `CompressionStream`.
-2. **No `any` in the emitted `.d.ts`.**
+   Also caught here: `Buffer`, `process`, `__dirname`. Same mistake, different hats.
+2. **Every throw is a typed `SImgError`** (`features/errors.md`).
+3. **No `.ts` specifier in the emitted JS.** Added on `feat/errors`, when
+   `rewriteRelativeImportExtensions` turned out to be what lets `node --test` run
+   straight from source. Its failure mode is the reason it exists: drop the flag and
+   `dist/` ships imports of files that are not in the package, so every consumer crashes
+   at import while the suite stays green, because tests run from `src/`.
+4. **No `any` in the emitted `.d.ts`.**
 
-Also caught by the first guard: `Buffer`, `process`, `__dirname` in the core. Same mistake,
-different hats.
+Each has a test that watches it fail on purpose. Not ceremony: the first version of guard 1
+reported clean on a real violation, because stripping string literals to keep prose from
+tripping it also deleted the import specifiers it was looking for. A guard whose failure
+mode is silence is a comment.
 
 ## Sequencing
 

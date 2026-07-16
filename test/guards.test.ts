@@ -12,6 +12,8 @@ import { promisify } from 'node:util';
 const run = promisify(execFile);
 const PROBE_DIR = new URL('../src/core/', import.meta.url).pathname;
 const PROBE = `${PROBE_DIR}__probe.ts`;
+const DIST_DIR = new URL('../dist/', import.meta.url).pathname;
+const DIST_PROBE = `${DIST_DIR}__probe.js`;
 
 /** Exit code of the guard script: 0 clean, 1 violations found. */
 async function guardExitCode(): Promise<number> {
@@ -46,6 +48,26 @@ test('rejects Buffer in core', async () => {
 test('rejects node:zlib outside codecs/png.ts', async () => {
   const code = await probe("import { deflateSync } from 'node:zlib';\nexport const x = deflateSync;\n");
   assert.equal(code, 1, 'zlib is only allowed in the one file that earns it');
+});
+
+test('rejects a bare throw', async () => {
+  // features/errors.md: the public API only ever throws an SImgError, so
+  // `catch (e) { e instanceof SImgError }` is exhaustive for the plugin.
+  const code = await probe("export function f() {\n  throw new Error('nope');\n}\n");
+  assert.equal(code, 1, 'throw new Error( must fail the guard');
+});
+
+test('rejects a .ts specifier in emitted JS', async () => {
+  // Source imports carry `.ts` and tsc rewrites them to `.js` on emit
+  // (rewriteRelativeImportExtensions). If that flag is ever dropped, dist/ ships
+  // specifiers pointing at files that aren't in the package and every consumer
+  // crashes on import -- while the suite stays green, because tests run from src.
+  await mkdir(DIST_DIR, { recursive: true });
+  await writeFile(DIST_PROBE, "export { x } from './core/thing.ts';\n");
+  const code = await guardExitCode();
+  await rm(DIST_PROBE, { force: true });
+
+  assert.equal(code, 1, 'a .ts specifier in dist/*.js must fail the guard');
 });
 
 test('allows banned words in prose', async () => {

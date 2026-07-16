@@ -1,10 +1,14 @@
 // s-img: pure TypeScript image manipulation for Node and Bun.
 //
-// Empty on purpose. The first feature branch (feat/raw-image) exports RawImage
-// from here. See features/index.md for the ordered plan.
-//
-// ponytail: no barrel of empty modules. Each branch adds its own export when it
-// has something to export. A barrel that eagerly imports every codec would also
-// foreclose the sub-path exports that features/bundle-size.md wants left possible.
+// See features/index.md for the ordered plan. Each branch adds its own export here
+// when it has something to export -- no barrel of empty modules, and nothing that
+// eagerly imports every codec, which would foreclose the sub-path exports
+// features/bundle-size.md wants left possible.
 
-export {};
+export {
+  SImgError,
+  CorruptImageError,
+  InvalidOptionError,
+  UnsupportedFormatError,
+  type SImgErrorCode,
+} from './core/errors.ts';
