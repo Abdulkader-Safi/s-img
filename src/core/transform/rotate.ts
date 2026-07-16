@@ -9,7 +9,7 @@
 import { ImageTooLargeError, InvalidOptionError } from '../errors.ts';
 import { createImage, DEFAULT_MAX_PIXELS, type RawImage, type RGBA } from '../image.ts';
 import { rotate90 } from './rotate90.ts';
-import { hasAlpha, premultiply, sampleAt, type MutableRGBA, type Resampling } from './resample.ts';
+import { assertResampling, hasAlpha, premultiply, sampleAt, type MutableRGBA, type Resampling } from './resample.ts';
 
 
 export interface RotateOptions {
@@ -42,6 +42,7 @@ export function assertRotateAngle(angle: number): void {
 
 export function rotate(image: RawImage, angle: number, options: RotateOptions = {}): RawImage {
   assertRotateAngle(angle);
+  if (options.resampling !== undefined) assertResampling(options.resampling, 'rotate.resampling');
 
   const { resampling = 'bilinear', background, maxPixels = DEFAULT_MAX_PIXELS } = options;
 
