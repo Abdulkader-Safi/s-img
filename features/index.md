@@ -69,7 +69,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [x] [fast-decode.md](fast-decode.md) — downsample during decode for the live preview path.
 - [x] [type-safety.md](type-safety.md) — strict types, `.toFormat('png', { quality })` is a compile error.
 - [x] [file-io.md](file-io.md) — the `fs` boundary, kept out of the pixel code.
-- [ ] [bundle-size.md](bundle-size.md) — the size budget and how it gets enforced in CI.
+- [x] [bundle-size.md](bundle-size.md) — the size budget and how it gets enforced in CI.
 
 ## Milestone 7: integration
 

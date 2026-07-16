@@ -47,6 +47,37 @@ failure. A budget nobody enforces is a wish.
 The delta printout is the useful half: "this PR added 12 KB" is what stops a slow slide.
 `size-limit` does both and is one config file. Use it rather than writing a script.
 
+**Built, and NOT with size-limit.** The deviation, recorded rather than left silent: the
+reason given above is that size-limit does both halves. `scripts/size.mjs` now does both, in
+~40 lines, with no dependency -- and it does one thing size-limit does not, which turned out
+to be the only check here that ever caught anything (below). Adding a devDependency tree to
+a project whose headline claim is "no dependencies", in order to replace a working script
+with a less capable one, is not a trade worth making. `.github/workflows/ci.yml` runs it.
+
+**What "the core" means, and why it is not the entry file.** The core is measured as the
+entry PLUS the transitive closure of its static imports -- what a consumer's runtime fetches
+before it can call anything. This is not pedantry, it is the entire check:
+
+> The first version measured `index.js` alone. Planting the exact regression this spec
+> predicts -- making the WebP `import()` static -- did **not** fail it. With code splitting
+> on, esbuild hoists a statically-imported module into a shared *chunk* rather than inlining
+> it, so `index.js` stayed 23 KB and pristine while eagerly depending on a 190 KB chunk
+> sitting next to it. The check passed, at 15.5% of budget, with the disaster fully present.
+
+Measured as the eager closure, the same plant reports 242.5 KB and fails twice over. The
+lesson generalises past this project: "the bundle" is a reachability question, not a file.
+
+**The WASM assertion looks for the WASM.** The spec says "assert on the file list, not just
+the size", and the first version did the opposite -- `text.includes('WEBP') && text.length >
+100 KB` -- which would pass happily if the WASM were inlined while something else shrank. It
+now looks for `AGFzbQ`, the base64 of every WASM module's `\0asm` magic. Presence is proof;
+absence is proof. Plus a self-check that the WASM is in *some* chunk, because "not in the
+core" is trivially true of a build where it does not exist.
+
+Both are pinned in `test/bundle-size.test.ts`, which plants the static import and watches
+the check fail. The spec called it "a good test of the check". It was: it is what found the
+bug in the check.
+
 Track the WASM separately: it is a static file, its size is whatever libwebp is, and it does
 not vary with our code. Two budgets, two lines.
 
@@ -102,7 +133,7 @@ there if it ever matters.)*
 
 ## Acceptance
 
-- CI measures min+gzip on every PR and fails over 150 KB.
+- CI measures min+gzip on every PR and fails over 150 KB. **Done** -- 23.2 KB, 15.5% of it.
 - The delta vs the previous commit is printed on every PR.
 - The WebP WASM is provably absent from the core bundle (assert on the file list, not just
   the size).
