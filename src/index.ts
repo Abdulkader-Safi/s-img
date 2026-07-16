@@ -1,4 +1,4 @@
-// s-img: pure TypeScript image manipulation for Node and Bun.
+// safi-image: pure TypeScript image manipulation for Node and Bun.
 //
 // See features/index.md for the ordered plan. Each branch adds its own export here
 // when it has something to export -- no barrel of empty modules, and nothing that

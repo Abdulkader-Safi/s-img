@@ -1,4 +1,4 @@
-// A tour of s-img, as a consumer would actually use it.
+// A tour of safi-image, as a consumer would actually use it.
 //
 //   npm run example
 //

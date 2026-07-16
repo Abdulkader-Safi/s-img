@@ -1,6 +1,6 @@
-# s-img feature index
+# safi-image feature index
 
-> `s-img`, short for safi-image. npm package name: `s-img`.
+> `safi-image`. npm package name: `safi-image`.
 
 Pure TypeScript image manipulation library. No native binaries, no postinstall step.
 Engine layer for the Obsidian image editor plugin, replacing a 7 MB ImageMagick bundle.

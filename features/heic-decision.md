@@ -48,8 +48,8 @@ Same lazy-load pattern as WebP, but the plugin decides whether to bundle it at a
 - **For:** users who need it get it; users who do not never download it. The lazy machinery
   already exists for WebP, so the marginal code is small.
 - **Against:** "the plugin decides whether to bundle it" is the hard part. If it is a
-  dependency of `s-img`, npm installs it for everyone and the plugin's bundler has to be
-  told to exclude it. If it is a separate optional package (`s-img-heic`) with a
+  dependency of `safi-image`, npm installs it for everyone and the plugin's bundler has to be
+  told to exclude it. If it is a separate optional package (`safi-image-heic`) with a
   registration hook, that is a plugin architecture — real design work, and a second package
   to publish and version.
 - **Also against:** the plugin bundles what it bundles. Obsidian users do not choose modules
