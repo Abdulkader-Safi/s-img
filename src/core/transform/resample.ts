@@ -5,9 +5,44 @@
  * and a fractional coordinate, what colour goes here. Same maths problem, same code.
  */
 
+import { InvalidOptionError } from '../errors.ts';
 import { createImage, type RawImage } from '../image.ts';
 
-export type Resampling = 'nearest' | 'bilinear' | 'lanczos3';
+/**
+ * The kernels, as data. The TYPE is derived from this rather than the other way round, so
+ * the runtime check and the compile-time union cannot drift apart -- add a kernel here and
+ * both follow. A hand-written validator list beside a hand-written union is two things to
+ * keep in step, and one of them always loses.
+ */
+export const RESAMPLING = ['nearest', 'bilinear', 'lanczos3'] as const;
+
+export type Resampling = (typeof RESAMPLING)[number];
+
+/**
+ * features/type-safety.md: "the types are for the developer at 3pm, the validation is for
+ * production at 3am."
+ *
+ * This was missing, and the failure was silent, which is the bad kind. `resampling:
+ * 'bicubic'` -- a real kernel, just not one this library has -- was accepted by resize and
+ * rotate and quietly fell through to a default. The output was a perfectly good image
+ * resampled with something other than what was asked for, and nothing said a word.
+ *
+ * It matters most at the trust boundary the pipeline is built for: a spec out of a settings
+ * file (`{"resize":{"resampling":"bicubic"}}`) has no types in front of it, and "silently
+ * ignore the field" is the worst available answer -- the only symptom is that the images
+ * are a bit softer than whoever wrote the spec expected, forever.
+ */
+export function assertResampling(value: unknown, option: string): asserts value is Resampling {
+  // The `typeof` half is an EQUIVALENT MUTANT at runtime and load-bearing anyway: deleting
+  // it changes no behaviour, because `['nearest'].includes(42)` is already false, so 42,
+  // null and {} all throw either way. It is here for the compiler -- `includes` takes a
+  // string and `value` is unknown, so without it this does not build. Recorded because a
+  // mutation run flags it as a survivor every time, and "survivor nobody explained" and
+  // "survivor that is fine" look identical six months later.
+  if (typeof value !== 'string' || !(RESAMPLING as readonly string[]).includes(value)) {
+    throw new InvalidOptionError(option, value, `must be one of ${RESAMPLING.join(', ')}`);
+  }
+}
 
 /**
  * A writable RGBA tuple. The public RGBA is readonly, but rotate samples millions of
