@@ -25,7 +25,8 @@
     "check:guards": "node scripts/guards.mjs",
     "check:size": "node scripts/size.mjs",
     "check": "tsc -p tsconfig.test.json && node scripts/guards.mjs && node --experimental-test-module-mocks --test 'test/**/*.test.ts'",
-    "gen:wasm": "node scripts/gen-wasm.mjs"
+    "gen:wasm": "node scripts/gen-wasm.mjs",
+    "bench:preview": "node --experimental-strip-types --no-warnings scripts/bench-preview.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

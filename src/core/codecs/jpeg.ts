@@ -13,6 +13,7 @@
 import { CorruptImageError, ImageTooLargeError, InvalidOptionError, UnsupportedFormatError } from '../errors.ts';
 import { createImage, DEFAULT_MAX_PIXELS, type RawImage, type RGBA } from '../image.ts';
 import { forwardDct, inverseDct } from './jpeg-dct.ts';
+import { blockSizeFor, inverseDctScaled, type BlockSize } from './jpeg-dct-scaled.ts';
 import {
   AC_CHROMA,
   AC_LUMA,
@@ -64,14 +65,28 @@ export function probeJpeg(bytes: Uint8Array): { width: number; height: number } 
   return { width: frame.width, height: frame.height };
 }
 
+export interface JpegDecodeOptions {
+  /**
+   * Decode small, for a preview. A HINT, not a guarantee: JPEG's DCT scaling only does
+   * powers of two, so a 4000px source hinted at 1600 comes back at 1000, not 1600. Always
+   * at or under, never over. Read the real size off the result.
+   *
+   * See features/fast-decode.md. This is the difference between a 260ms stutter and a
+   * frame, and it is nearly free: the IDCT gets CHEAPER, because it transforms only the
+   * low-frequency corner of each block instead of transforming all 64 coefficients and
+   * throwing most of the result away.
+   */
+  hintMaxLongEdge?: number;
+}
+
 /**
  * Decode a baseline JPEG to RGBA.
  *
  * @throws {UnsupportedFormatError} for progressive or arithmetic-coded files
  * @throws {CorruptImageError} for a malformed or truncated file
  */
-export function decodeJpeg(bytes: Uint8Array): RawImage {
-  const frame = readFrame(bytes, false);
+export function decodeJpeg(bytes: Uint8Array, options: JpegDecodeOptions = {}): RawImage {
+  const frame = readFrame(bytes, false, options.hintMaxLongEdge);
   const { width, height, components } = frame;
 
   for (const c of components) upsample(c, frame);
@@ -166,7 +181,7 @@ interface Frame {
  * the scan -- so a caller sizing a preview does not need a decoder that can read it, and
  * probe works on progressive files that decode does not.
  */
-function readFrame(bytes: Uint8Array, headerOnly: boolean): Frame {
+function readFrame(bytes: Uint8Array, headerOnly: boolean, hint?: number): Frame {
   if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== Marker.SOI) {
     throw new CorruptImageError('Not a JPEG: missing the SOI marker.');
   }
@@ -260,6 +275,11 @@ function readFrame(bytes: Uint8Array, headerOnly: boolean): Frame {
   if (frame === undefined) throw new CorruptImageError('JPEG has no frame header.');
   if (scanned.size === 0) throw new CorruptImageError('JPEG has no scan data.');
 
+  // Decided ONCE, here, before any block is transformed: every component must be scaled by
+  // the same factor or the chroma planes stop lining up with the luma. Chosen from the
+  // frame's real dimensions, so a hint larger than the image is simply a full decode.
+  const n = hint === undefined ? 8 : blockSizeFor(frame.width, frame.height, hint);
+
   for (const c of frame.components) {
     if (!scanned.has(c.id)) {
       throw new CorruptImageError(`JPEG never sends a scan for component ${c.id}.`);
@@ -268,7 +288,18 @@ function readFrame(bytes: Uint8Array, headerOnly: boolean): Frame {
     if (q === undefined) {
       throw new CorruptImageError(`JPEG component ${c.id} names a missing quantisation table.`);
     }
-    transform(c, q);
+    transform(c, q, n);
+  }
+
+  // The frame now describes the image we actually produced, not the one the header
+  // declared. Everything downstream -- the upsampler, the colour transform, the caller --
+  // reads its dimensions from here, so this one assignment is what keeps them consistent.
+  //
+  // ceil, not round: a 17px component at 1/2 is 9 rows of samples, and flooring to 8 drops
+  // a row of the image.
+  if (n !== 8) {
+    frame.width = Math.ceil((frame.width * n) / 8);
+    frame.height = Math.ceil((frame.height * n) / 8);
   }
 
   return frame;
@@ -691,20 +722,22 @@ function decodeBlock(
 }
 
 /** Dequantise and inverse-transform every block of a component into a sample plane. */
-function transform(c: Component, quant: Uint16Array): void {
-  const stride = c.blocksPerLineForMcu * 8;
-  const samples = new Uint8ClampedArray(stride * c.blocksPerColumnForMcu * 8);
+function transform(c: Component, quant: Uint16Array, n: BlockSize): void {
+  const stride = c.blocksPerLineForMcu * n;
+  const samples = new Uint8ClampedArray(stride * c.blocksPerColumnForMcu * n);
 
   for (let row = 0; row < c.blocksPerColumnForMcu; row++) {
     for (let col = 0; col < c.blocksPerLineForMcu; col++) {
-      inverseDct(
-        c.coefficients,
-        (row * c.blocksPerLineForMcu + col) * 64,
-        quant,
-        samples,
-        row * 8 * stride + col * 8,
-        stride,
-      );
+      const coefOffset = (row * c.blocksPerLineForMcu + col) * 64;
+      const outOffset = row * n * stride + col * n;
+      // n === 8 is the exact, bit-exact-with-libjpeg integer path. Anything smaller is a
+      // preview and takes the reduced transform, which is both cheaper and approximate --
+      // the save path never comes through here with n < 8.
+      if (n === 8) {
+        inverseDct(c.coefficients, coefOffset, quant, samples, outOffset, stride);
+      } else {
+        inverseDctScaled(c.coefficients, coefOffset, quant, samples, outOffset, stride, n);
+      }
     }
   }
 

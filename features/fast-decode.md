@@ -6,7 +6,7 @@
 a full-resolution rotate cost ~260ms and caused visible stutter. The preview path is the fix.
 
 ```typescript
-decode(bytes, { maxLongEdge: 1600 });
+decode(bytes, { hintMaxLongEdge: 1600 });
 ```
 
 Downsample **during** decode. Not decode-full-then-resize — that pays the full-resolution
@@ -57,7 +57,7 @@ Lanczos — it is a preview.
 
 The plugin's actual flow, which the library exists to serve:
 
-1. **On open:** `decode(bytes, {maxLongEdge: 1600})`. One small `RawImage`, held.
+1. **On open:** `decode(bytes, {hintMaxLongEdge: 1600})`. One small `RawImage`, held.
 2. **On every interaction:** apply the pipeline to that small image, push pixels to a
    canvas. No re-decode, no encode. Should be a frame.
 3. **On save:** `decode(bytes)` at full resolution, apply the same pipeline
@@ -87,13 +87,16 @@ what `probe()` is for ([decode.md](decode.md)).
 
 Worth considering: expose `probe(bytes)` publicly so the plugin can get real dimensions in
 microseconds. It is already there internally for the size guard. One export, no new code,
-removes a whole class of scaling bug. **Do it.**
+removes a whole class of scaling bug. **Do it.** -- done, and note it reports STORED
+dimensions while `decode` applies EXIF orientation, so a rotated photo's probe is transposed
+relative to its decode. Scaling still comes out right because both edges scale by the same
+factor, but it is pinned as a test rather than left to be discovered.
 
 ## maxLongEdge on decode vs the pipeline method
 
 Same name, different things, and the collision is worth being deliberate about:
 
-- `decode(bytes, {maxLongEdge})` — a **performance hint**. "I do not need more than this
+- `decode(bytes, {hintMaxLongEdge})` — a **performance hint**. "I do not need more than this
   many pixels." Best-effort, may return larger (JPEG's powers of two), never smaller than
   necessary.
 - `.maxLongEdge(n)` on the pipeline — an **output guarantee**
@@ -102,7 +105,9 @@ Same name, different things, and the collision is worth being deliberate about:
 A caller who confuses them gets a preview that is the wrong size, or an output that is not
 capped. Different enough that the shared name is a liability. **Rename the decode option to
 `hintMaxLongEdge`**, or document the distinction hard. Prefer the rename; a name that lies
-costs more than a longer name.
+costs more than a longer name. **Done** -- and the rename immediately caught a real
+confusion: a blind search-and-replace hit `PipelineSpec`'s `resize.maxLongEdge`, which is
+the OTHER thing, and the spec round-trip test went red within a minute.
 
 ## Use cases
 
@@ -116,10 +121,30 @@ costs more than a longer name.
 - **JPEG's power-of-two granularity.** A 4000px image capped at 1600 decodes at 1000px
   (1/4), not 1600 — because 1/2 gives 2000, which is over. Always err on the side of *at or
   under* the cap, never over. Then the caller reads the real dimensions off the result.
-- **`maxLongEdge: 1`.** Legal. Produces roughly a 1px image. Silly but not an error.
+- **`hintMaxLongEdge: 1`.** Legal. Produces roughly a 1px image. Silly but not an error.
 - **The fallback path's peak memory.** PNG still allocates the full 48 MB before
   downsampling. On a memory-constrained machine, opening a huge PNG preview costs the same
   as opening it fully. Honest limitation, document it.
+
+## Measured
+
+`npm run bench:preview`, on a 4000x3000 (12MP) JPEG. Median of 5, M-series laptop --
+directional, not a contract; the CONTRACT is the instrumented counter in
+test/core/fast-decode-counter.test.ts, which proves the reduced transform actually runs.
+
+| | Time | Result |
+|---|---|---|
+| decode, full resolution | 181ms | 4000x3000 |
+| decode, `hintMaxLongEdge: 1600` | **37ms** | 1000x750 (1/4, exactly as the worked example predicts) |
+| decode, `hintMaxLongEdge: 400` | 25ms | 400x300 |
+| crop + rotate 15 on the preview | **10ms** | the per-interaction cost |
+| crop + rotate 15 at full resolution | 153ms | what the PRD measured as a stutter |
+
+Decode is **4.9x** faster at 1600. The number that matters is the 10ms: the PRD's ~260ms
+stutter was a full-resolution transform per interaction, and the two-pass design replaces it
+with a 10ms one, inside a 16ms frame. The remaining decode cost is the entropy decode, which
+no amount of DCT scaling can avoid -- the Huffman stream has to be walked in full whatever
+size you want out of it. That is the ceiling here, and at 1/8 it is most of what is left.
 
 ## Acceptance
 

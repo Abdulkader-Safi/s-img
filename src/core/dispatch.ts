@@ -25,8 +25,20 @@ import { maxLongEdge as capLongEdge } from './transform/resize.ts';
 import { rotate90 } from './transform/rotate90.ts';
 
 export interface DecodeOptions {
-  /** Downsample during decode so the long edge lands at or under this. */
-  maxLongEdge?: number;
+  /**
+   * Decode small, for a preview. The long edge lands at or under this.
+   *
+   * A HINT, not the pipeline's `.maxLongEdge()`, and the different name is deliberate.
+   * This is a performance request -- "I do not need more than this many pixels" -- and
+   * what each codec can do about it varies enormously: JPEG scales during the inverse DCT
+   * and gets genuinely faster, while PNG has to inflate the whole thing first and only
+   * saves on what comes after. `.maxLongEdge()` on the pipeline is an output GUARANTEE and
+   * is exact.
+   *
+   * A caller who confuses the two gets a preview of the wrong size or an output that is not
+   * capped, so they do not share a name. A name that lies costs more than a longer name.
+   */
+  hintMaxLongEdge?: number;
   /** Skip the format sniff and force a codec. Escape hatch, rarely correct. */
   format?: Format;
   /** Refuse to allocate a canvas larger than this many pixels. */
@@ -65,8 +77,14 @@ interface Codec {
    * and fails ungracefully, so probe cannot be allowed to need the module it protects.
    */
   probe(bytes: Uint8Array): { width: number; height: number };
-  /** Async only for WebP, whose codec arrives via dynamic import. The rest return directly. */
-  decode(bytes: Uint8Array): RawImage | Promise<RawImage>;
+  /**
+   * Async only for WebP, whose codec arrives via dynamic import. The rest return directly.
+   *
+   * `hint` is the preview size, and a codec is free to ignore it entirely -- only JPEG can
+   * act on it cheaply (features/fast-decode.md). decode() caps whatever comes back, so a
+   * codec that ignores it is correct, just not fast.
+   */
+  decode(bytes: Uint8Array, hint?: number): RawImage | Promise<RawImage>;
   encode(image: RawImage, opts: never): Uint8Array | Promise<Uint8Array>;
   /**
    * Every option this format understands. The types above already say this, and say it
@@ -89,7 +107,13 @@ const CODECS: Partial<Record<Format, Codec>> = {
   // compiler catches and this catches again. A silently-ignored option is worse than an
   // error, because the user sees a slider move and the file not change.
   png: { probe: probePng, decode: decodePng, encode: encodePng, options: [] },
-  jpeg: { probe: probeJpeg, decode: decodeJpeg, encode: encodeJpeg, options: ['quality', 'background'] },
+  jpeg: {
+    // The only codec that can act on the hint, and the format the plugin sees most.
+    probe: probeJpeg,
+    decode: (bytes, hint) => decodeJpeg(bytes, hint === undefined ? {} : { hintMaxLongEdge: hint }),
+    encode: encodeJpeg,
+    options: ['quality', 'background'],
+  },
   gif: { probe: probeGif, decode: decodeGif, encode: encodeGif, options: ['colors', 'dither'] },
   bmp: { probe: probeBmp, decode: decodeBmp, encode: encodeBmp, options: ['background'] },
   tiff: { probe: probeTiff, decode: decodeTiff, encode: encodeTiff, options: ['compression'] },
@@ -105,6 +129,27 @@ const CODECS: Partial<Record<Format, Codec>> = {
  */
 export async function preload(format: Format): Promise<void> {
   if (format === 'webp') await preloadWebp();
+}
+
+/**
+ * Read an image's real dimensions without decoding it.
+ *
+ * Already existed internally for the size guard; exported because it removes a whole class
+ * of coordinate bug for nothing. The preview path needs the SOURCE size to scale a crop
+ * rectangle drawn in preview coordinates, and the only alternatives are decoding the image
+ * twice or assuming a scale factor -- and assuming is how you get a crop that is off by
+ * 1.6x, because JPEG's DCT scaling only does powers of two.
+ *
+ * Microseconds: it parses a header and allocates no pixel buffer.
+ *
+ * @throws {UnsupportedFormatError} nothing matched, or the format has no codec
+ * @throws {CorruptImageError} the header matched and did not parse
+ */
+export function probe(bytes: Uint8Array): { width: number; height: number } {
+  const format = sniff(bytes);
+  const codec = format === undefined ? undefined : CODECS[format];
+  if (codec === undefined) throw new UnsupportedFormatError(bytes);
+  return codec.probe(bytes);
 }
 
 /**
@@ -144,7 +189,7 @@ export async function decode(bytes: Uint8Array, opts: DecodeOptions = {}): Promi
   const maxPixels = opts.maxPixels ?? DEFAULT_MAX_PIXELS;
   if (width * height > maxPixels) throw new ImageTooLargeError(width, height, maxPixels);
 
-  const image = await codec.decode(bytes);
+  const image = await codec.decode(bytes, opts.hintMaxLongEdge);
   // The seam assertValidImage was written for. No codec here can currently fail it --
   // each validates its own header, and a 0-width BMP throws CORRUPT_IMAGE long before
   // this line -- so it is deliberately an unreachable assertion today. It stays because
@@ -163,7 +208,16 @@ export async function decode(bytes: Uint8Array, opts: DecodeOptions = {}): Promi
   // features/index.md.
   const oriented = format === 'jpeg' ? applyOrientation(image, readExifOrientation(bytes)) : image;
 
-  return opts.maxLongEdge === undefined ? oriented : capLongEdge(oriented, opts.maxLongEdge);
+  // Cap whatever the codec produced. For JPEG this is usually a no-op -- the DCT already
+  // landed under the hint -- and for everything else it is the fallback: decode fully,
+  // resize, and let the full-resolution buffer go. The caller still gets a small image and
+  // still saves on every downstream transform, which is where most of the cost is anyway.
+  // The decode itself is not faster, and the docs say so rather than implying a uniform win.
+  //
+  // It also makes the contract simple: never over the hint, for any format. JPEG's
+  // power-of-two granularity means "at or under", never over -- a 4000px source hinted at
+  // 1600 comes back at 1000, because 2000 would be more than was asked for.
+  return opts.hintMaxLongEdge === undefined ? oriented : capLongEdge(oriented, opts.hintMaxLongEdge);
 }
 
 /**
