@@ -1,17 +1,24 @@
-// The two mechanical checks the specs actually assert. See features/file-io.md
+// The mechanical checks the specs assert. See features/file-io.md, features/errors.md
 // and features/type-safety.md.
 //
 //   1. No filesystem (or other host) access under src/core/. node:zlib in
 //      codecs/png.ts is the ONE allowed exception -- it's what a browser build
 //      would swap for CompressionStream.
-//   2. No `any` in the emitted .d.ts.
+//   2. Every throw is a typed SImgError, so the plugin's instanceof check is exhaustive.
+//   3. The emitted JS never imports a .ts path that won't exist in the package.
+//   4. No `any` in the emitted .d.ts.
 //
-// ponytail: greps, not eslint. Two rules don't need a plugin ecosystem.
+// Each one has a test in test/guards.test.ts that watches it fail on purpose. That is
+// not ceremony: the first version of guard 1 passed silently on a real violation,
+// because stripping string literals deleted the import specifiers it was hunting for.
+//
+// ponytail: greps, not eslint. Four rules don't need a plugin ecosystem.
 
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
+const SRC = join(ROOT, 'src');
 const CORE = join(ROOT, 'src/core');
 const DIST = join(ROOT, 'dist');
 
@@ -95,7 +102,35 @@ for (const file of coreFiles) {
   }
 }
 
-// Guard 2: no `any` in the public types. Only meaningful once dist/ exists.
+// Guard 2: everything throws a typed error, so the plugin's `instanceof SImgError`
+// is exhaustive. src/core/errors.ts is where the subclasses are defined, so it is
+// the one file allowed to name the base Error.
+for (const file of (await walk(SRC)).filter((f) => f.endsWith('.ts'))) {
+  const rel = relative(SRC, file);
+  if (rel === 'core/errors.ts') continue;
+
+  const code = stripStrings(stripComments(await readFile(file, 'utf8')));
+  for (const _ of code.matchAll(/\bthrow\s+new\s+(?:Error|TypeError|RangeError)\s*\(/g)) {
+    failures.push(`src/${rel}: bare throw -- use an SImgError subclass (features/errors.md)`);
+  }
+  for (const _ of code.matchAll(/\bthrow\s+(?!new\b)['"`{[]/g)) {
+    failures.push(`src/${rel}: thrown literal -- use an SImgError subclass`);
+  }
+}
+
+// Guard 3: the emitted JS never points at a .ts file. Source uses `.ts` specifiers and
+// tsc rewrites them on emit (rewriteRelativeImportExtensions in tsconfig.json). Drop
+// that flag and dist/ ships imports of files that aren't in the package: every consumer
+// crashes at import time, and the suite stays green because tests run from src.
+// Declaration files legitimately keep `.ts` -- TS resolves those to the sibling .d.ts.
+for (const file of (await walk(DIST)).filter((f) => f.endsWith('.js'))) {
+  const code = stripComments(await readFile(file, 'utf8'));
+  for (const m of code.matchAll(/(?:from|import\s*\()\s*['"](\.[^'"]*\.ts)['"]/g)) {
+    failures.push(`${relative(ROOT, file)}: emitted a .ts specifier (${m[1]}) -- it won't exist in dist/`);
+  }
+}
+
+// Guard 4: no `any` in the public types. Only meaningful once dist/ exists.
 for (const file of (await walk(DIST)).filter((f) => f.endsWith('.d.ts'))) {
   const code = await readFile(file, 'utf8');
   // `any` as a type position, not as part of a word like "anywhere" or "Company".
@@ -112,4 +147,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('guards: core is host-free, public types carry no `any`');
+console.log(
+  `guards: ${coreFiles.length} core file(s) host-free, all throws typed, ` +
+    'no .ts specifiers emitted, no `any` in public types',
+);

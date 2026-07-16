@@ -78,18 +78,24 @@ little, and Bun's `node:test` support has gaps not worth fighting. It imports th
 under Bun and asserts it works, which is the parity claim's foundation. Today that means it
 loads; it grows into a decode, transform, encode round-trip when PNG lands.
 
-## The two guards
+## The guards
 
-`pnpm check:guards` enforces the only two mechanical rules the design asserts:
+`pnpm check:guards` enforces the mechanical rules the design asserts:
 
 1. **No host access under `src/core/`.** No `fs`, no `Buffer`, no `process`. Pixel code that
    can't reach the filesystem can't grow a filesystem-shaped bug, needs no mock, and stays
    portable to a browser build later. `node:zlib` in `codecs/png.ts` is the one exception,
    and it's what a browser build would swap for `CompressionStream`.
-2. **No `any` in the emitted `.d.ts`.**
+2. **Every throw is a typed `SImgError`**, so a caller's `instanceof` check is exhaustive.
+3. **The emitted JS never imports a `.ts` path.** Source uses `.ts` specifiers and `tsc`
+   rewrites them on emit. Lose that and the published package crashes on import for
+   everyone, while the suite stays green, because tests run from source.
+4. **No `any` in the emitted `.d.ts`.**
 
-Two rules is not an eslint config. They're greps, in `scripts/guards.mjs`, with a test that
-watches them fail on purpose.
+Four rules is not an eslint config. They're greps, in `scripts/guards.mjs`, and each has a
+test that watches it fail on purpose. That isn't ceremony: the first version of guard 1
+reported clean on a real violation, because stripping string literals to protect prose also
+deleted the import specifiers it was hunting for.
 
 ## Layout
 

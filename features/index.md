@@ -21,8 +21,12 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 ## Milestone 1: core buffer, PNG, resize, crop
 
+- [x] [errors.md](errors.md) — typed error classes, thrown early, never a bare `Error`.
+      *(Moved ahead of raw-image: `createImage` and `assertValidImage` both have to throw,
+      and errors.md bans a bare `throw new Error(` anywhere in the codebase. Errors has no
+      dependencies of its own. `CodecLoadError` is deliberately absent until
+      `feat/codec-webp`, which is when the `Format` type it carries will exist.)*
 - [ ] [raw-image.md](raw-image.md) — the `RawImage` pixel buffer type, the one currency the whole library trades in.
-- [ ] [errors.md](errors.md) — typed error classes, thrown early, never a bare `Error`.
 - [ ] [decode.md](decode.md) — `decode(bytes, opts)`, magic-byte sniffing, codec dispatch.
 - [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
 - [ ] [codec-png.md](codec-png.md) — PNG read and write on Node's `zlib`.

@@ -20,6 +20,14 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
 
+    // Source imports carry the real `.ts` extension and tsc rewrites them to `.js` on
+    // emit. That is what lets `node --test` run the tests straight from source with no
+    // build step, while dist/ still ships correct ESM specifiers. Without this, source
+    // would need `.js` specifiers pointing at files that don't exist until built, and
+    // Node's type stripping can't follow them.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
