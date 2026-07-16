@@ -25,3 +25,5 @@ export { decodePng, encodePng, probePng } from './core/codecs/png.ts';
 export { crop, type CropOptions } from './core/transform/crop.ts';
 export { flip, type FlipOptions } from './core/transform/flip.ts';
 export { rotate90 } from './core/transform/rotate90.ts';
+export { resize, maxLongEdge, type ResizeOptions } from './core/transform/resize.ts';
+export { type Resampling } from './core/transform/resample.ts';
