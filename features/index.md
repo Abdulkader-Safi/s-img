@@ -62,7 +62,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 - [x] [api-surface.md](api-surface.md) — the chained builder, async shape, entry points.
   - [ ] **`stripMetadata()` is a byte-for-byte no-op.** [strip-metadata.md](strip-metadata.md) is already true by construction and needs no code; the method is a builder method and belongs here. Its last acceptance item -- calling it and not calling it produce identical output -- can only be asserted once the builder exists.
-  - [ ] **A runnable example, not a test.** Once the SDK exists, add a real script under `examples/` that exercises it end to end the way a consumer would, and link it from the README. It has to be something you can actually run and watch work, separate from the test suite.
+  - [x] **A runnable example, not a test.** Once the SDK exists, add a real script under `examples/` that exercises it end to end the way a consumer would, and link it from the README. It has to be something you can actually run and watch work, separate from the test suite.
 - [x] [pipeline-order.md](pipeline-order.md) — canonical crop → rotate → flip → resize → format order.
 - [x] [batch-pipeline.md](batch-pipeline.md) — the reusable, serialisable pipeline object.
 - [x] [fast-decode.md](fast-decode.md) — downsample during decode for the live preview path.
