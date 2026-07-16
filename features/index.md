@@ -66,7 +66,7 @@ the list is sorted so each item's dependencies are already ticked above it.
   - [ ] **A runnable example, not a test.** Once the SDK exists, add a real script under `examples/` that exercises it end to end the way a consumer would, and link it from the README. It has to be something you can actually run and watch work, separate from the test suite.
 - [x] [pipeline-order.md](pipeline-order.md) — canonical crop → rotate → flip → resize → format order.
 - [x] [batch-pipeline.md](batch-pipeline.md) — the reusable, serialisable pipeline object.
-- [ ] [fast-decode.md](fast-decode.md) — downsample during decode for the live preview path.
+- [x] [fast-decode.md](fast-decode.md) — downsample during decode for the live preview path.
 - [x] [type-safety.md](type-safety.md) — strict types, `.toFormat('png', { quality })` is a compile error.
 - [x] [file-io.md](file-io.md) — the `fs` boundary, kept out of the pixel code.
 - [ ] [bundle-size.md](bundle-size.md) — the size budget and how it gets enforced in CI.

@@ -7,7 +7,8 @@ import { SImgError } from '../../src/core/errors.ts';
 import { createImage, type RawImage } from '../../src/core/image.ts';
 import { maxLongEdge as capLongEdge } from '../../src/core/transform/resize.ts';
 import { encodeBmp } from '../../src/core/codecs/bmp.ts';
-import { encodeJpeg, readExifOrientation } from '../../src/core/codecs/jpeg.ts';
+import { decodeJpeg, encodeJpeg, readExifOrientation } from '../../src/core/codecs/jpeg.ts';
+import { rotate90 } from '../../src/core/transform/rotate90.ts';
 import { encodePng } from '../../src/core/codecs/png.ts';
 import type { Format } from '../../src/core/formats.ts';
 
@@ -146,7 +147,7 @@ test('the size guard measures the declared header, not the decoded result', asyn
   const view = new DataView(bmp.buffer, bmp.byteOffset);
   view.setInt32(18, 60000, true);
   view.setInt32(22, 60000, true);
-  await rejects(() => decode(bmp, { maxLongEdge: 64 }), 'IMAGE_TOO_LARGE');
+  await rejects(() => decode(bmp, { hintMaxLongEdge: 64 }), 'IMAGE_TOO_LARGE');
 });
 
 // --- EXIF orientation ---------------------------------------------------------------
@@ -213,30 +214,40 @@ test('decode ignores an out-of-range orientation rather than throwing', async ()
   assert.deepEqual([img.width, img.height], [24, 16], 'left as stored');
 });
 
-test('decode applies orientation before maxLongEdge, so the cap lands on the displayed edge', async () => {
+test('decode applies orientation before the cap, so the cap lands on the displayed edge', async () => {
   // Order matters: 24x16 tagged "rotate 90" displays as 16x24, whose long edge is the 24.
   //
   // Dimensions alone CANNOT catch the wrong order here, which is the trap: a 90 degree
-  // rotation is a transpose, so capping first and rotating after lands on the same 8x12
-  // for every cap value. Only the pixels differ (51 of 384 channels, by 1, from resampling
-  // on the untransposed grid). So this compares against decode-then-cap, which is the
-  // contract stated directly: capping is the last thing that happens to a finished image.
-  const capped = await decode(read('exif/orient-6.jpg'), { maxLongEdge: 12 });
-  const expected = capLongEdge(await decode(read('exif/orient-6.jpg')), 12);
+  // rotation is a transpose, so capping first and rotating after lands on the same 8x12 for
+  // every cap value. Only the pixels differ (51 of 384 channels, by 1, from resampling on
+  // the untransposed grid). So this hand-composes the three steps from primitives the
+  // dispatcher does not own -- the codec, rotate90, and the cap -- and asserts the
+  // dispatcher agrees. Comparing dispatch against dispatch would compare an order to
+  // itself and pass whatever the order was.
+  //
+  // Composed rather than compared against a full-resolution decode, which is what this used
+  // to do: a hint of 12 on a 24px source now scales during the DCT, and DCT downsampling is
+  // not bilinear downsampling, so the pixels legitimately differ by ~7 and the assertion
+  // went red. A tolerance would not save it -- the wrong ORDER only moves 51 channels by 1,
+  // so any tolerance loose enough to admit the DCT difference admits the bug too.
+  const bytes = read('exif/orient-6.jpg');
+  const capped = await decode(bytes, { hintMaxLongEdge: 12 });
+  const expected = capLongEdge(rotate90(decodeJpeg(bytes, { hintMaxLongEdge: 12 }), 90), 12);
 
   assert.deepEqual([capped.width, capped.height], [8, 12]);
+  assert.deepEqual(readExifOrientation(bytes), 6, 'the fixture stopped being the one this composes by hand');
   assert.deepEqual(capped.data, expected.data);
 });
 
 // --- maxLongEdge --------------------------------------------------------------------
 
 test('decode caps the long edge when asked', async () => {
-  const img = await decode(read('jpeg/s420.jpg'), { maxLongEdge: 16 });
+  const img = await decode(read('jpeg/s420.jpg'), { hintMaxLongEdge: 16 });
   assert.deepEqual([img.width, img.height], [16, 16]);
 });
 
 test('decode leaves an image already under maxLongEdge alone', async () => {
-  const img = await decode(read('jpeg/s420.jpg'), { maxLongEdge: 4096 });
+  const img = await decode(read('jpeg/s420.jpg'), { hintMaxLongEdge: 4096 });
   assert.deepEqual([img.width, img.height], [32, 32]);
 });
 

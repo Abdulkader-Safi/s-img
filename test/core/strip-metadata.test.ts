@@ -143,7 +143,7 @@ test('no format inflates a small file with a metadata block', async () => {
   // 50-100 KB of EXIF plus thumbnail plus ICC is most of a small file. A 4x4 has nowhere
   // to hide one: any format whose output runs to kilobytes here is writing something it
   // should not.
-  const img = await decode(read('exif/gps.jpg'), { maxLongEdge: 4 });
+  const img = await decode(read('exif/gps.jpg'), { hintMaxLongEdge: 4 });
   for (const format of FORMATS) {
     const out = await encode(img, format);
     assert.ok(out.length < 1024, `${format} wrote ${out.length} bytes for a 4x4`);
