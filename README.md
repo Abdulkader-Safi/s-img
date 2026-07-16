@@ -34,11 +34,140 @@ If the core misses 150 KB, the premise is in trouble. `npm run check:size` measu
 
 ## Status
 
-**Nothing is built yet.** The design is done and the toolchain runs. The code starts now.
+**Every feature is built.** All six formats read and write, the transforms and the pipeline
+are done, and the core is **23.2 KB min+gzip** — 15.5% of the 150 KB budget, against the 7 MB
+it replaces. 558 tests, plus a Bun parity check and a size gate, on every PR.
 
-`features/index.md` is the plan: 30 features, one file each, ordered by milestone so every dependency lands before the thing that needs it. Each unchecked box is one branch.
+`features/index.md` is the plan: one file per feature, ordered by milestone. Every box is
+ticked; the handful of open sub-items under them are recorded gaps, not surprises.
 
-`docs/superpowers/specs/2026-07-16-s-img-setup-design.md` records the decisions those specs left open, including why HEIC was dropped and why the whole API is async.
+`docs/superpowers/specs/2026-07-16-s-img-setup-design.md` records the decisions those specs
+left open, including why HEIC was dropped and why the whole API is async.
+
+## Install
+
+Not on npm yet. Install it straight from GitHub:
+
+```bash
+npm i github:Abdulkader-Safi/s-img
+```
+
+npm clones the repo and builds it for you (`dist/` is not committed, so a `prepare` script
+compiles it on install). Pin a branch or a tag when you want to:
+
+```bash
+npm i github:Abdulkader-Safi/s-img#main
+```
+
+Requires Node 22.18+ or Bun. The package is ESM with bundled type declarations; a CJS
+consumer (an Obsidian plugin, say) gets there through its own bundler, which is what esbuild
+is for.
+
+Working on both repos at once? `npm link ../s-img` skips the reinstall on every change.
+
+## Using it
+
+```typescript
+import { SImg } from "s-img";
+
+const out = await SImg.fromBuffer(bytes)
+  .crop({ x: 200, y: 100, width: 800, height: 600 })
+  .rotate(8)
+  .maxLongEdge(400)
+  .toFormat("jpeg", { quality: 80 })
+  .toBuffer();
+```
+
+`Uint8Array` in, `Uint8Array` out. Everything is async because WebP's WASM has to load
+sometime, and one API that is sometimes async is worse than one that always is.
+
+**The order is canonical, not the order you call it in:** crop → rotate → flip → resize →
+format. Say what you want and the library sequences it, so a chain cannot mean two things.
+
+### A recipe you can store
+
+A chain edits one image. A pipeline is a recipe — plain JSON, so it survives a settings
+file, and the same object drives both a preview and the full-resolution save.
+
+```typescript
+const preset = SImg.pipeline()
+  .maxLongEdge(600)
+  .stripMetadata()
+  .toFormat("jpeg", { quality: 75 });
+
+localStorage.setItem("preset", JSON.stringify(preset.toJSON()));
+const restored = SImg.pipeline(JSON.parse(localStorage.getItem("preset")!));
+
+for (const file of files) await restored.run(file); // reusable, no rebuilding
+```
+
+`SImg.pipeline(spec)` validates: a spec out of a settings file is untrusted input, and it
+throws `InvalidOptionError` naming the field rather than failing weirdly three steps later.
+
+### Previews: decode small, transform often
+
+The reason the library exists. A full-resolution rotate on a 12MP photo is ~150ms — visible
+stutter on every frame of a drag. So decode once, small, and transform _that_:
+
+```typescript
+const preview = await decode(bytes, { hintMaxLongEdge: 1600 }); // 68ms, not 224ms
+// per frame: transform `preview`. No re-decode, no encode. ~9ms.
+// on save:   SImg.pipeline(spec).run(bytes)  — full resolution, once.
+```
+
+**Read the size off the result, never compute it.** `hintMaxLongEdge` is a hint: JPEG scales
+during the DCT, which only does powers of two, so a 4000px photo hinted at 1600 comes back
+at **1000**. Assume `1600 / 4000` and every crop you map back is off by 1.6×.
+
+```typescript
+const scale = probe(bytes).width / preview.width; // probe() is microseconds, no decode
+```
+
+### Errors
+
+Every failure is an `SImgError` with a `code`, never a raw `TypeError` from inside a decoder.
+
+```typescript
+import { SImgError, UnsupportedFormatError, ImageTooLargeError } from 's-img';
+
+try {
+  await SImg.fromBuffer(bytes).toFormat('webp').toBuffer();
+} catch (e) {
+  if (e instanceof UnsupportedFormatError) {
+    // The bytes are not an image we read. e.message quotes the first few, so a
+    // bug report tells you what the file actually was.
+  } else if (e instanceof ImageTooLargeError) {
+    // A decompression bomb, or a genuinely enormous photo. Raise the cap per call
+    // with decode(bytes, { maxPixels }) if you meant it.
+  } else if (e instanceof SImgError) {
+    switch (e.code) { /* 'CORRUPT_IMAGE' | 'INVALID_OPTION' | ... */ }
+  }
+}
+```
+
+Messages are written for whoever reads the bug report, not for whoever wrote the throw:
+`jpeg.quality must be an integer from 1 to 100, got 500`.
+
+### What this build can do, right now
+
+WebP is a WASM module that loads on first use, so it can genuinely be unavailable in a way
+PNG never is. Ask rather than assume:
+
+```typescript
+supportedFormats(); // { read: [...], write: [...], pending: ['webp'], unavailable: [] }
+await preload("webp"); // optional: load it up front instead of on first touch
+```
+
+### Examples
+
+Two runnable scripts, which are the fastest way to see the whole surface:
+
+```bash
+npm run example          # the tour: read, chain, convert, store a spec, handle errors
+npm run example:preview  # the two-pass preview design, with real timings on a 12MP photo
+```
+
+They write real files into `examples/output/` for you to open. See `examples/`.
 
 ## Running it
 
