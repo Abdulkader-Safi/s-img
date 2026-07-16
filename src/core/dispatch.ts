@@ -16,7 +16,7 @@ import { decodeGif, encodeGif, probeGif, type GifEncodeOptions } from './codecs/
 import { decodeJpeg, encodeJpeg, probeJpeg, readExifOrientation, type JpegEncodeOptions } from './codecs/jpeg.ts';
 import { decodePng, encodePng, probePng } from './codecs/png.ts';
 import { decodeTiff, encodeTiff, probeTiff, type TiffEncodeOptions } from './codecs/tiff.ts';
-import { ImageTooLargeError, SImgError, UnsupportedFormatError } from './errors.ts';
+import { ImageTooLargeError, InvalidOptionError, SImgError, UnsupportedFormatError } from './errors.ts';
 import { sniff, type Format } from './formats.ts';
 import { assertValidImage, DEFAULT_MAX_PIXELS, type RawImage } from './image.ts';
 import { flip } from './transform/flip.ts';
@@ -48,6 +48,15 @@ interface Codec {
   probe(bytes: Uint8Array): { width: number; height: number };
   decode(bytes: Uint8Array): RawImage;
   encode(image: RawImage, opts: never): Uint8Array;
+  /**
+   * Every option this format understands. The types above already say this, and say it
+   * better -- but types do not survive JSON.parse, and the batch pipeline is explicitly
+   * serialisable (features/batch-pipeline.md), so `{format: 'png', quality: 80}` can
+   * arrive from a settings file having never seen the compiler.
+   *
+   * Belt and braces. This is the one that fires in production.
+   */
+  options: readonly string[];
 }
 
 /**
@@ -56,11 +65,14 @@ interface Codec {
  * same UNSUPPORTED_FORMAT as asking for a HEIC -- which is honest.
  */
 const CODECS: Partial<Record<Format, Codec>> = {
-  png: { probe: probePng, decode: decodePng, encode: encodePng },
-  jpeg: { probe: probeJpeg, decode: decodeJpeg, encode: encodeJpeg },
-  gif: { probe: probeGif, decode: decodeGif, encode: encodeGif },
-  bmp: { probe: probeBmp, decode: decodeBmp, encode: encodeBmp },
-  tiff: { probe: probeTiff, decode: decodeTiff, encode: encodeTiff },
+  // No options at all, which is the point: `quality` on a lossless format is a lie the
+  // compiler catches and this catches again. A silently-ignored option is worse than an
+  // error, because the user sees a slider move and the file not change.
+  png: { probe: probePng, decode: decodePng, encode: encodePng, options: [] },
+  jpeg: { probe: probeJpeg, decode: decodeJpeg, encode: encodeJpeg, options: ['quality', 'background'] },
+  gif: { probe: probeGif, decode: decodeGif, encode: encodeGif, options: ['colors', 'dither'] },
+  bmp: { probe: probeBmp, decode: decodeBmp, encode: encodeBmp, options: ['background'] },
+  tiff: { probe: probeTiff, decode: decodeTiff, encode: encodeTiff, options: ['compression'] },
 };
 
 /**
@@ -140,6 +152,21 @@ export async function encode<F extends Format>(
   const codec = CODECS[format];
   if (codec === undefined) {
     throw new UnsupportedFormatError(new Uint8Array(0), `Cannot encode to ${format}: no encoder for that format.`);
+  }
+
+  // Reject an option this format does not have, rather than ignoring it. `quality` on a
+  // PNG is the case that matters: the plugin disables its quality slider on lossless
+  // formats, and the library and the UI must not disagree about what is possible.
+  for (const key of Object.keys(opts ?? {})) {
+    if (!codec.options.includes(key)) {
+      throw new InvalidOptionError(
+        `encode.${key}`,
+        (opts as Record<string, unknown>)[key],
+        codec.options.length === 0
+          ? `${format} takes no options`
+          : `${format} takes only ${codec.options.join(', ')}`,
+      );
+    }
   }
 
   // Checked rather than trusted, because the encoders do not fail on a malformed image:

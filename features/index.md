@@ -51,7 +51,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [x] [codec-gif.md](codec-gif.md) — GIF read and write, static frames, quantisation.
 - [x] [codec-tiff.md](codec-tiff.md) — TIFF read and write, uncompressed and LZW.
 - [x] [strip-metadata.md](strip-metadata.md) — EXIF, GPS and ICC removal, per codec.
-- [ ] [format-quality.md](format-quality.md) — `toFormat()` and the quality option.
+- [x] [format-quality.md](format-quality.md) — `toFormat()` and the quality option.
 
 ## Milestone 5: WebP
 

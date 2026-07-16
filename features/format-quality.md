@@ -19,11 +19,12 @@ requirement and it is a compile error, not a runtime no-op:
 
 ```typescript
 type FormatOptions<F extends Format> =
-  F extends 'jpeg'  ? { quality?: Quality }
+  F extends 'jpeg'  ? { quality?: Quality; background?: RGBA }
 : F extends 'webp'  ? { quality?: Quality; lossless?: boolean }
-: F extends 'gif'   ? { dither?: boolean; paletteSize?: number }
+: F extends 'gif'   ? { dither?: boolean; colors?: number }
 : F extends 'tiff'  ? { compression?: 'none' | 'lzw' }
-: F extends 'png' | 'bmp' ? Record<string, never>
+: F extends 'bmp'   ? { background?: RGBA }
+: F extends 'png'   ? Record<string, never>
 : never;
 
 type Quality = number; // 1-100, validated at runtime
@@ -36,8 +37,16 @@ type Quality = number; // 1-100, validated at runtime
 .toFormat('gif',  { dither: false }) // fine
 ```
 
-The PNG/BMP `Record<string, never>` is what makes the error message land on the excess
-property. Mechanism and the branded-`Quality` question are in
+PNG's `Record<string, never>` is what makes the error message land on the excess
+property.
+
+Two corrections to the sketch above, both found while building this against the codecs that
+already existed. It said `paletteSize` where [codec-gif.md](codec-gif.md) and the
+implementation say **`colors`** -- one name had to win, and `colors` is the one already
+shipped and the one the ecosystem uses (`magick -colors`, pngquant, sharp). And it gave BMP
+no options and JPEG only `quality`, but [encode.md](encode.md) requires `background` on both
+of the formats with no alpha, or a rotated PNG's transparent corners have nowhere to go. The
+sketch was illustrative; the codecs are the contract. Mechanism and the branded-`Quality` question are in
 [type-safety.md](type-safety.md).
 
 Why this instead of ignoring the option: it mirrors the plugin's UI, which disables the
@@ -65,7 +74,7 @@ Belt and braces, and the runtime check is the one that actually fires in product
 - `quality` unspecified on WebP → **80**. WebP's quality scale is not JPEG's; the same
   number does not mean the same thing, and 80 is roughly where WebP sits for
   visually-lossless-ish photos.
-- GIF `dither` → true. `paletteSize` → 256.
+- GIF `dither` → true. `colors` → 256.
 - TIFF `compression` → `'lzw'`.
 
 ## Quality is not comparable across formats
