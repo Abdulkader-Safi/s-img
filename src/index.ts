@@ -23,7 +23,8 @@ export {
   type RGBA,
 } from './core/image.ts';
 
-export { FORMATS, type Format } from './core/formats.ts';
+export { FORMATS, sniff, type Format } from './core/formats.ts';
+export { decode, encode, type DecodeOptions, type EncodeOptions } from './core/dispatch.ts';
 
 // Codec-level entry points. `decode`/`encode` will dispatch to these once they land;
 // they stay exported as the low-level door for a caller who already knows the format

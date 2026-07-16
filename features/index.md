@@ -25,8 +25,9 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [x] [raw-image.md](raw-image.md) — the `RawImage` pixel buffer type, the one currency the whole library trades in.
 - [x] **formats** — the `Format` union and the magic-byte sniffer, carved out of [decode.md](decode.md)'s "Format sniffing" section. Not a spec file of its own. (Split out because decode needs `Format` before it can have a signature, and decode with no codec to dispatch to is nothing. Identifying HEIC by name for the error message lands with feat/decode, where the error is built.)*
 - [x] [codec-png.md](codec-png.md) — PNG read and write on Node’s `zlib`. Verified byte-identical to libpng on 120 real system PNGs.
-- [ ] [decode.md](decode.md) — `decode(bytes, opts)`, the size guard, codec dispatch.
-- [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
+- [x] [decode.md](decode.md) — `decode(bytes, opts)`, the size guard, codec dispatch.
+- [x] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
+  - [ ] **TIFF's own Orientation tag.** decode.md's orientation step covers JPEG only. TIFF carries the same tag number (274) in its IFD rather than in an APP1, and our TIFF decoder ignores it, so a scanner file tagged "rotate 90" decodes sideways. Found while proving a mutant equivalent on feat/dispatch; belongs to [codec-tiff.md](codec-tiff.md).
 - [x] [resampling.md](resampling.md) — nearest, bilinear, Lanczos-3 kernels, shared by resize and rotate.
 - [x] [resize.md](resize.md) — `resize({ width, height, upscale, fit })`.
 - [x] [crop.md](crop.md) — `crop({ x, y, width, height })`.

@@ -1,0 +1,204 @@
+/**
+ * decode() and encode(): the boundary between "a file" and "pixels".
+ * See features/decode.md and features/encode.md.
+ *
+ * Two views of one dispatch table. Everything format-specific lives in a codec; what
+ * lives here is the part no codec can own -- the format sniff, the size guard, and the
+ * EXIF orientation, which needs a codec's reader and a transform's writer and so belongs
+ * to neither.
+ *
+ * By the time a RawImage leaves decode(), the source format does not exist. That is what
+ * makes format conversion fall out for free rather than being a feature.
+ */
+
+import { decodeBmp, encodeBmp, probeBmp, type BmpEncodeOptions } from './codecs/bmp.ts';
+import { decodeGif, encodeGif, probeGif, type GifEncodeOptions } from './codecs/gif.ts';
+import { decodeJpeg, encodeJpeg, probeJpeg, readExifOrientation, type JpegEncodeOptions } from './codecs/jpeg.ts';
+import { decodePng, encodePng, probePng } from './codecs/png.ts';
+import { decodeTiff, encodeTiff, probeTiff, type TiffEncodeOptions } from './codecs/tiff.ts';
+import { ImageTooLargeError, SImgError, UnsupportedFormatError } from './errors.ts';
+import { sniff, type Format } from './formats.ts';
+import { assertValidImage, DEFAULT_MAX_PIXELS, type RawImage } from './image.ts';
+import { flip } from './transform/flip.ts';
+import { maxLongEdge as capLongEdge } from './transform/resize.ts';
+import { rotate90 } from './transform/rotate90.ts';
+
+export interface DecodeOptions {
+  /** Downsample during decode so the long edge lands at or under this. */
+  maxLongEdge?: number;
+  /** Skip the format sniff and force a codec. Escape hatch, rarely correct. */
+  format?: Format;
+  /** Refuse to allocate a canvas larger than this many pixels. */
+  maxPixels?: number;
+}
+
+/** Format-conditional, so `quality` exists only where it means something. */
+export type EncodeOptions<F extends Format> = F extends 'jpeg'
+  ? JpegEncodeOptions
+  : F extends 'gif'
+    ? GifEncodeOptions
+    : F extends 'bmp'
+      ? BmpEncodeOptions
+      : F extends 'tiff'
+        ? TiffEncodeOptions
+        : Record<string, never>;
+
+interface Codec {
+  /** Header only. What makes both the size guard and a downsample plan possible. */
+  probe(bytes: Uint8Array): { width: number; height: number };
+  decode(bytes: Uint8Array): RawImage;
+  encode(image: RawImage, opts: never): Uint8Array;
+}
+
+/**
+ * The dispatch table. `webp` is deliberately absent: its codec is a lazily-loaded WASM
+ * module and lands in features/codec-webp.md. Until then, asking for one produces the
+ * same UNSUPPORTED_FORMAT as asking for a HEIC -- which is honest.
+ */
+const CODECS: Partial<Record<Format, Codec>> = {
+  png: { probe: probePng, decode: decodePng, encode: encodePng },
+  jpeg: { probe: probeJpeg, decode: decodeJpeg, encode: encodeJpeg },
+  gif: { probe: probeGif, decode: decodeGif, encode: encodeGif },
+  bmp: { probe: probeBmp, decode: decodeBmp, encode: encodeBmp },
+  tiff: { probe: probeTiff, decode: decodeTiff, encode: encodeTiff },
+};
+
+/**
+ * Bytes in, RGBA out. Sniffs the format, guards the size, dispatches to a codec.
+ *
+ * Async because WebP's codec arrives via dynamic import (features/api-surface.md, Q3):
+ * async everywhere beats a sync/async split that leaks the WebP special case into every
+ * call site.
+ *
+ * @throws {UnsupportedFormatError} nothing matched, or the format has no codec
+ * @throws {SImgError} FORMAT_MISMATCH if `opts.format` contradicts the header
+ * @throws {ImageTooLargeError} the declared dimensions exceed `maxPixels`
+ * @throws {CorruptImageError} the header matched and the rest did not parse
+ */
+export async function decode(bytes: Uint8Array, opts: DecodeOptions = {}): Promise<RawImage> {
+  const detected = sniff(bytes);
+
+  // Neither one silently wins. A caller forcing a codec against the header is doing
+  // something exotic enough to deserve an explicit error before we act on a guess.
+  if (opts.format !== undefined && opts.format !== detected) {
+    throw new SImgError(
+      'FORMAT_MISMATCH',
+      `Asked to decode as ${opts.format}, but the header says ${detected ?? 'nothing we recognise'}.`,
+    );
+  }
+
+  const format = opts.format ?? detected;
+  const codec = format === undefined ? undefined : CODECS[format];
+  if (codec === undefined) throw new UnsupportedFormatError(bytes);
+
+  // The trust boundary. Read the declared size, compare, throw BEFORE allocating: a
+  // 30-byte BMP header can claim 60000x60000, and a decoder that allocates first and
+  // validates second is a one-line denial of service against anyone who opens an
+  // attachment folder. Measured on the DECLARED size, never on the result -- a guard
+  // applied after maxLongEdge shrank the image would let the hostile header through.
+  const { width, height } = codec.probe(bytes);
+  const maxPixels = opts.maxPixels ?? DEFAULT_MAX_PIXELS;
+  if (width * height > maxPixels) throw new ImageTooLargeError(width, height, maxPixels);
+
+  const image = codec.decode(bytes);
+  // The seam assertValidImage was written for. No codec here can currently fail it --
+  // each validates its own header, and a 0-width BMP throws CORRUPT_IMAGE long before
+  // this line -- so it is deliberately an unreachable assertion today. It stays because
+  // the next codec through this seam is WebP: a WASM module whose output buffer we do
+  // not control and cannot fix. Cheap insurance at the one place that can see the lie.
+  assertValidImage(image);
+
+  // Orientation first: it is what the image IS, and the cap applies to the edge the user
+  // will actually see. A 24x16 tagged "rotate 90" displays as 16x24, whose long edge is
+  // the 24 -- cap before rotating and the wrong axis gets capped.
+  //
+  // The 'jpeg' guard is for cost and clarity, not behaviour: readExifOrientation parses
+  // JPEG APP1 markers, so on any other container it reports 1 and this would be a no-op
+  // anyway (pinned by a test). Note TIFF carries its own Orientation tag -- same number,
+  // 274, but in its IFD rather than an APP1 -- which this does NOT cover. See
+  // features/index.md.
+  const oriented = format === 'jpeg' ? applyOrientation(image, readExifOrientation(bytes)) : image;
+
+  return opts.maxLongEdge === undefined ? oriented : capLongEdge(oriented, opts.maxLongEdge);
+}
+
+/**
+ * RawImage in, bytes out. The mirror of decode().
+ *
+ * Writes no EXIF, no GPS, no ICC, always. There is nothing to preserve: decode already
+ * dropped the metadata and baked the orientation into the pixels. Carrying the tag
+ * forward would double-rotate. See features/strip-metadata.md.
+ *
+ * @throws {UnsupportedFormatError} the format has no encoder
+ * @throws {SImgError} ENCODE_FAILED, with the original error as `cause`
+ */
+export async function encode<F extends Format>(
+  image: RawImage,
+  format: F,
+  opts?: EncodeOptions<F>,
+): Promise<Uint8Array> {
+  const codec = CODECS[format];
+  if (codec === undefined) {
+    throw new UnsupportedFormatError(new Uint8Array(0), `Cannot encode to ${format}: no encoder for that format.`);
+  }
+
+  // Checked rather than trusted, because the encoders do not fail on a malformed image:
+  // encodePng handed a 2-byte buffer for a 4x4 reads past the end, gets undefined, and
+  // writes a perfectly valid 72-byte PNG of garbage. Silent nonsense is worse than a
+  // throw, and by the time anyone notices, the file is saved.
+  try {
+    assertValidImage(image);
+  } catch (cause) {
+    throw new SImgError('ENCODE_FAILED', `Cannot encode to ${format}: ${message(cause)}`, { cause });
+  }
+
+  try {
+    return codec.encode(image, (opts ?? {}) as never);
+  } catch (cause) {
+    // Never let a raw RangeError from a typed-array write escape the boundary. An
+    // SImgError from the codec is already the contract -- an out-of-range quality is an
+    // InvalidOptionError and says so better than ENCODE_FAILED would.
+    if (cause instanceof SImgError) throw cause;
+    throw new SImgError('ENCODE_FAILED', `Encoding to ${format} failed: ${message(cause)}`, { cause });
+  }
+}
+
+/**
+ * Apply an EXIF orientation (1-8) to the pixels.
+ *
+ * This is the reason decode is a layer rather than a re-export of the codecs: an iPhone
+ * stores a landscape JPEG with a tag saying "rotate 90". Ignore it and every phone photo
+ * comes out sideways and the user's crop coordinates mean nothing. The codec only READS
+ * the tag -- a codec that imports a transform is a dependency running the wrong way
+ * round -- so the applying happens here, where both are already in scope.
+ *
+ * An out-of-range value is left alone rather than thrown at. Real files carry 0 and 9,
+ * and neither is a reason to refuse a photo the user can see fine in Preview.
+ */
+function applyOrientation(image: RawImage, orientation: number): RawImage {
+  // The transform each value asks a viewer to apply to the STORED pixels. Mirroring runs
+  // first where both are present, which is what makes 5 a transpose rather than a
+  // transverse -- swap the order and 5 and 7 quietly trade places.
+  switch (orientation) {
+    case 2:
+      return flip(image, { horizontal: true });
+    case 3:
+      return rotate90(image, 180);
+    case 4:
+      return flip(image, { vertical: true });
+    case 5:
+      return rotate90(flip(image, { horizontal: true }), 270);
+    case 6:
+      return rotate90(image, 90);
+    case 7:
+      return rotate90(flip(image, { horizontal: true }), 90);
+    case 8:
+      return rotate90(image, 270);
+    default:
+      return image;
+  }
+}
+
+function message(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
