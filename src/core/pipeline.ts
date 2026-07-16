@@ -21,7 +21,7 @@
  * to express an order and therefore no way for them to get it wrong.
  */
 
-import { decode, encode, type EncodeOptions } from './dispatch.ts';
+import { decode, encode, type FormatOptions } from './dispatch.ts';
 import { InvalidOptionError } from './errors.ts';
 import { FORMATS, sniff, type Format } from './formats.ts';
 import { type RawImage, type RGBA } from './image.ts';
@@ -51,7 +51,7 @@ export interface PipelineSpec {
   rotate?: { angle: number } & RotateOptions;
   flip?: FlipOptions;
   resize?: ResizeStage;
-  format?: { format: Format; options?: EncodeOptions<Format> };
+  format?: { format: Format; options?: FormatOptions<Format> };
   /**
    * Effectively always true (features/strip-metadata.md): decode drops metadata at the
    * boundary, so there is never anything for an encoder to write. It is here so the
@@ -135,7 +135,7 @@ export async function runPipeline(spec: PipelineSpec, bytes: Uint8Array): Promis
   const merged =
     spec.background !== undefined && takesBackground ? { background: spec.background, ...options } : options;
 
-  return encode(image === out ? image : out, format, merged as EncodeOptions<Format>);
+  return encode(image === out ? image : out, format, merged as FormatOptions<Format>);
 }
 
 /** Distinguishes the two shapes sharing the resize slot. */

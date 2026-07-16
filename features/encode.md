@@ -10,11 +10,15 @@
 function encode<F extends Format>(
   image: RawImage,
   format: F,
-  opts?: EncodeOptions<F>,
+  opts?: FormatOptions<F>,
 ): Promise<Uint8Array>;
 ```
 
-`EncodeOptions<F>` is format-conditional so `quality` only exists on the lossy formats.
+`FormatOptions<F>` is format-conditional so `quality` only exists on the lossy formats.
+(This file originally called it `EncodeOptions`; [type-safety.md](type-safety.md),
+[format-quality.md](format-quality.md) and [pipeline-order.md](pipeline-order.md) all called
+it `FormatOptions`, and it is the better name because it is what both doors take —
+`encode(img, 'jpeg', …)` and `.toFormat('jpeg', …)`. One type, one name.)
 That whole mechanism lives in [type-safety.md](type-safety.md) and
 [format-quality.md](format-quality.md); this file is about the encoding itself.
 

@@ -19,7 +19,7 @@
  * microseconds against a 260ms rotate, and nobody will ever measure it.
  */
 
-import { type EncodeOptions } from './dispatch.ts';
+import { type FormatOptions } from './dispatch.ts';
 import { type Format } from './formats.ts';
 import { type RGBA } from './image.ts';
 import { runPipeline, validateSpec, type PipelineSpec } from './pipeline.ts';
@@ -110,8 +110,8 @@ abstract class Stages<T> {
    * The output format. Omit it and the output keeps the SOURCE format -- re-encoding a
    * JPEG as a PNG because the caller forgot to say would turn a 200 KB photo into 4 MB.
    */
-  toFormat<F extends Format>(format: F, options?: EncodeOptions<F>): T {
-    this.spec.format = options === undefined ? { format } : { format, options: options as EncodeOptions<Format> };
+  toFormat<F extends Format>(format: F, options?: FormatOptions<F>): T {
+    this.spec.format = options === undefined ? { format } : { format, options: options as FormatOptions<Format> };
     return this as unknown as T;
   }
 
