@@ -7,24 +7,10 @@
  */
 
 import { ImageTooLargeError, InvalidOptionError } from '../errors.ts';
-import { createImage, type RawImage, type RGBA } from '../image.ts';
+import { createImage, DEFAULT_MAX_PIXELS, type RawImage, type RGBA } from '../image.ts';
 import { rotate90 } from './rotate90.ts';
 import { hasAlpha, premultiply, sampleAt, type MutableRGBA, type Resampling } from './resample.ts';
 
-/**
- * 512 MB of RGBA. Deliberately NOT the 20000 x 20000 that decode.md originally stated:
- * that is 400M pixels / 1.49 GB, which permits exactly the allocations the cap exists to
- * stop. Two places in the spec proved it:
- *
- *   - raw-image.md calls 20000x20000 (1.6 GB) "past what a V8 typed array will
- *     comfortably hold" -- so the cap allowed an image the spec itself calls unusable.
- *   - rotate.md requires a 20000x1 rotated 45 degrees to throw. Its box is 14143x14143 =
- *     200M pixels = 0.75 GB, which is UNDER 400M, so it would not have.
- *
- * 134M pixels clears any realistic photo (a 100MP scan is 400 MB) while catching both.
- * Callers who genuinely want more pass `maxPixels`.
- */
-const DEFAULT_MAX_PIXELS = 128 * 1024 * 1024;
 
 export interface RotateOptions {
   /** Default 'bilinear'. */

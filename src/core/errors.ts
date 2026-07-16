@@ -92,13 +92,21 @@ export class UnsupportedFormatError extends SImgError {
   /** The first 12 bytes as space-separated hex, or `''` for an empty input. */
   readonly detectedMagic: string;
 
-  constructor(bytes: Uint8Array) {
+  /**
+   * @param bytes the file, for the hex dump
+   * @param reason why it cannot be read, when the format IS one we recognise but in a
+   *   variant we cannot decode -- a progressive JPEG, say. Without it the message is the
+   *   default "we have never heard of this format", which for a file we clearly did
+   *   identify would send someone hunting a corruption bug that is not there.
+   */
+  constructor(bytes: Uint8Array, reason?: string) {
     const magic = hexDump(bytes, MAGIC_BYTES);
     super(
       'UNSUPPORTED_FORMAT',
-      magic === ''
-        ? 'Not an image: the file is empty.'
-        : `Not a supported image format. First bytes: ${magic}`,
+      reason ??
+        (magic === ''
+          ? 'Not an image: the file is empty.'
+          : `Not a supported image format. First bytes: ${magic}`),
     );
     this.detectedMagic = magic;
   }

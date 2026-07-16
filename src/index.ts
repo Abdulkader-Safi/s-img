@@ -14,7 +14,14 @@ export {
   type SImgErrorCode,
 } from './core/errors.ts';
 
-export { createImage, assertValidImage, copyImage, type RawImage, type RGBA } from './core/image.ts';
+export {
+  createImage,
+  assertValidImage,
+  copyImage,
+  DEFAULT_MAX_PIXELS,
+  type RawImage,
+  type RGBA,
+} from './core/image.ts';
 
 export { FORMATS, type Format } from './core/formats.ts';
 
@@ -23,6 +30,13 @@ export { FORMATS, type Format } from './core/formats.ts';
 // and wants to skip the sniff (features/api-surface.md).
 export { decodePng, encodePng, probePng } from './core/codecs/png.ts';
 export { decodeBmp, encodeBmp, probeBmp, type BmpEncodeOptions } from './core/codecs/bmp.ts';
+export {
+  decodeJpeg,
+  encodeJpeg,
+  probeJpeg,
+  readExifOrientation,
+  type JpegEncodeOptions,
+} from './core/codecs/jpeg.ts';
 
 export { crop, type CropOptions } from './core/transform/crop.ts';
 export { flip, type FlipOptions } from './core/transform/flip.ts';
