@@ -1,6 +1,6 @@
 {
   "name": "s-img",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Pure TypeScript image manipulation for Node and Bun. No native binaries, no compile step.",
   "type": "module",
   "license": "MIT",
