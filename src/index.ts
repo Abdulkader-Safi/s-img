@@ -14,3 +14,5 @@ export {
 } from './core/errors.ts';
 
 export { createImage, assertValidImage, copyImage, type RawImage, type RGBA } from './core/image.ts';
+
+export { FORMATS, type Format } from './core/formats.ts';

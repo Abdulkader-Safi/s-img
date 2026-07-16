@@ -27,9 +27,17 @@ the list is sorted so each item's dependencies are already ticked above it.
       dependencies of its own. `CodecLoadError` is deliberately absent until
       `feat/codec-webp`, which is when the `Format` type it carries will exist.)*
 - [x] [raw-image.md](raw-image.md) — the `RawImage` pixel buffer type, the one currency the whole library trades in.
-- [ ] [decode.md](decode.md) — `decode(bytes, opts)`, magic-byte sniffing, codec dispatch.
-- [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
+- [x] **formats** — the `Format` union and the magic-byte sniffer, carved out of
+      [decode.md](decode.md)'s "Format sniffing" section. Not a spec file of its own.
+      *(Split out because decode needs `Format` before it can have a signature, and
+      decode with no codec to dispatch to is nothing. Identifying HEIC by name for the
+      error message lands with feat/decode, where the error is built.)*
 - [ ] [codec-png.md](codec-png.md) — PNG read and write on Node's `zlib`.
+      **Do this before decode/encode**: the dispatch layer needs something to dispatch to,
+      and PNG is the lossless round-trip every later feature gets tested against.
+      Carries the `node:zlib`-in-an-Obsidian-renderer check (see below).
+- [ ] [decode.md](decode.md) — `decode(bytes, opts)`, the size guard, codec dispatch.
+- [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
 - [ ] [resampling.md](resampling.md) — nearest, bilinear, Lanczos-3 kernels, shared by resize and rotate.
 - [ ] [resize.md](resize.md) — `resize({ width, height, upscale, fit })`.
 - [ ] [crop.md](crop.md) — `crop({ x, y, width, height })`.
