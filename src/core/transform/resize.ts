@@ -33,14 +33,19 @@ export interface ResizeOptions {
  *
  * @throws {InvalidOptionError} if no target is given, or a target is out of range
  */
-export function resize(image: RawImage, options: ResizeOptions): RawImage {
-  const { fit = 'fill', resampling = 'bilinear', upscale = true, background = DEFAULT_BACKGROUND } = options;
-
+/** The half of resize's validation that does not need an image. See assertCropOptions. */
+export function assertResizeOptions(options: ResizeOptions): void {
   if (options.width === undefined && options.height === undefined) {
     throw new InvalidOptionError('resize', options, 'needs a width or a height');
   }
   if (options.width !== undefined) assertSize(options.width, 'resize.width');
   if (options.height !== undefined) assertSize(options.height, 'resize.height');
+}
+
+export function resize(image: RawImage, options: ResizeOptions): RawImage {
+  const { fit = 'fill', resampling = 'bilinear', upscale = true, background = DEFAULT_BACKGROUND } = options;
+
+  assertResizeOptions(options);
 
   const { width, height } = resolve(image, options);
 

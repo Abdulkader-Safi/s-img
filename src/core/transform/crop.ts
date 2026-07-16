@@ -31,11 +31,25 @@ export interface CropOptions {
  *
  * @throws {InvalidOptionError} if the rectangle is fractional, empty, or out of bounds
  */
-export function crop(image: RawImage, rect: CropOptions): RawImage {
+/**
+ * The half of crop's validation that does not need an image.
+ *
+ * Split out so the chain can validate eagerly, at the call site, before any decode
+ * (features/api-surface.md): `.crop({ width: -5 })` is a caller mistake and should surface
+ * on the line that made it, not two awaits later. The bounds checks below genuinely need
+ * the image and stay in crop().
+ *
+ * @throws {InvalidOptionError} if the rectangle is fractional or empty
+ */
+export function assertCropOptions(rect: CropOptions): void {
   assertInteger(rect.x, 'crop.x', 0);
   assertInteger(rect.y, 'crop.y', 0);
   assertInteger(rect.width, 'crop.width', 1);
   assertInteger(rect.height, 'crop.height', 1);
+}
+
+export function crop(image: RawImage, rect: CropOptions): RawImage {
+  assertCropOptions(rect);
 
   if (rect.x + rect.width > image.width) {
     throw new InvalidOptionError(

@@ -33,10 +33,15 @@ export interface RotateOptions {
  * @throws {InvalidOptionError} if the angle is not finite
  * @throws {ImageTooLargeError} if the *computed* canvas exceeds the pixel cap
  */
-export function rotate(image: RawImage, angle: number, options: RotateOptions = {}): RawImage {
+/** The half of rotate's validation that does not need an image. See assertCropOptions. */
+export function assertRotateAngle(angle: number): void {
   if (!Number.isFinite(angle)) {
     throw new InvalidOptionError('rotate.angle', angle, 'must be a finite number of degrees');
   }
+}
+
+export function rotate(image: RawImage, angle: number, options: RotateOptions = {}): RawImage {
+  assertRotateAngle(angle);
 
   const { resampling = 'bilinear', background, maxPixels = DEFAULT_MAX_PIXELS } = options;
 

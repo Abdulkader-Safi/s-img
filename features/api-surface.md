@@ -50,12 +50,12 @@ Consequences worth stating:
 - Call order does not matter, because nothing runs in call order. That is what makes
   [pipeline-order.md](pipeline-order.md) possible rather than a lie.
 
-## Open question Q3: sync or async
+## Q3, ANSWERED: sync or async
 
 The PRD asks: WebP's dynamic import is inherently async — does everything go async for
 consistency, including PNG and JPEG work that could be synchronous?
 
-**Recommendation: async everywhere. `toBuffer()` always returns a Promise.**
+**Decided: async everywhere. `toBuffer()` always returns a Promise.** Signed off explicitly, since it is irreversible in practice.
 
 - A sync/async split leaks WebP's implementation detail into every call site. The plugin
   would need `if (format === 'webp') await ... else ...`, which is the library's problem
@@ -72,8 +72,8 @@ consistency, including PNG and JPEG work that could be synchronous?
 The cost is honest and small: a Promise wrapper on work that could be synchronous. That is
 microseconds against a 260ms rotate. Nobody will ever measure it.
 
-**Needs your explicit sign-off** because it is irreversible in practice — adding sync later
-means a parallel API forever.
+Signed off. It is irreversible in practice — adding sync later means a parallel API forever
+— which is exactly why it was asked rather than assumed.
 
 ## Chain state
 
