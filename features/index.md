@@ -68,7 +68,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [x] [batch-pipeline.md](batch-pipeline.md) — the reusable, serialisable pipeline object.
 - [ ] [fast-decode.md](fast-decode.md) — downsample during decode for the live preview path.
 - [ ] [type-safety.md](type-safety.md) — strict types, `.toFormat('png', { quality })` is a compile error.
-- [ ] [file-io.md](file-io.md) — the `fs` boundary, kept out of the pixel code.
+- [x] [file-io.md](file-io.md) — the `fs` boundary, kept out of the pixel code.
 - [ ] [bundle-size.md](bundle-size.md) — the size budget and how it gets enforced in CI.
 
 ## Milestone 7: integration

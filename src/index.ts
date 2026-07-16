@@ -27,6 +27,8 @@ export { FORMATS, sniff, type Format } from './core/formats.ts';
 export { supportedFormats, type FormatSupport } from './core/supported.ts';
 export { decode, encode, preload, type DecodeOptions, type EncodeOptions } from './core/dispatch.ts';
 export { SImg, SImgChain, Pipeline } from './core/simg.ts';
+// The fs boundary. Kept out of the pixel code, and out of anything a browser build ships.
+export { fromFile, toFile } from './io/index.ts';
 export { applySpec, validateSpec, type PipelineSpec, type ResizeStage } from './core/pipeline.ts';
 
 // Codec-level entry points. `decode`/`encode` will dispatch to these once they land;
