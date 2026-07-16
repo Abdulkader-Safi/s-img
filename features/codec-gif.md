@@ -87,6 +87,17 @@ clear and end codes, a 4095-entry table that must be reset when it fills, and th
 stream chopped into sub-blocks of ≤255 bytes. Each of those details is a way to produce a
 file that opens in one viewer and not another. Follow gifenc's structure.
 
+**Built: the dictionary reset is worth 2.2× and is easy to get away with skipping.**
+Freezing the table when it fills instead of clearing it ("deferred clear") is also legal
+GIF, and our own decoder reads both, so no round-trip test can tell them apart. File size
+can: on a 200×200 gradient, resetting gives 22 KB and freezing gives 50 KB, because a stale
+dictionary keeps coding at 12 bits for matches it no longer finds. Freezing does win on
+pure noise, by ~10%, which is not what anyone stores. The test asserts the size.
+
+**And the bit alignment needs a sweep, not a fixture.** Codes are 2–12 bits, so whether the
+stream ends mid-byte depends on the exact pixel count. Dropping the final partial byte broke
+9 of 120 small sizes — and none of the fixtures, all of which happened to land tidily.
+
 No quality option (`quality` is a lossy-format thing and GIF's loss is quantisation, not a
 dial). `.toFormat('gif', { quality })` is a compile error. Dithering and palette size are
 GIF-specific options ([type-safety.md](type-safety.md) covers how those are typed).
@@ -107,6 +118,20 @@ GIF-specific options ([type-safety.md](type-safety.md) covers how those are type
 - **Frame smaller than the logical screen.** The image descriptor has its own x/y/w/h.
   Composite onto the logical screen at the offset, or crop to the frame. Use the *logical
   screen* size as the image size and place the frame in it — that is what the file means.
+
+  **Built: this needed a second decision the spec did not ask, and the obvious answer is
+  wrong.** What fills the area the frame does not cover? GIF89a says the *background colour
+  index* from the screen descriptor, and ImageMagick duly paints it. Browsers ignore that
+  field entirely and render transparent.
+
+  **We follow the browser.** The plugin renders in Obsidian, which is Chromium: if a user
+  sees a transparent surround and we decode it as red, editing the file changes what they
+  were looking at. Verified rather than assumed — Chromium decodes the fixture to 20×20
+  with `rgba(0,0,0,0)` outside the frame and red inside, exactly matching us, while
+  ImageMagick's `-coalesce` fills the whole canvas red.
+
+  This is the one fixture with no ImageMagick reference. The test spells the behaviour out
+  instead.
 - **No global colour table, only local.** Legal. Use the local one.
 - **An empty / 0-colour palette.** Corrupt. Throw.
 - **Interlaced.** 4-pass row order. Fixture it.
@@ -116,11 +141,33 @@ GIF-specific options ([type-safety.md](type-safety.md) covers how those are type
 ## Acceptance
 
 - Decodes 87a and 89a fixtures, interlaced and not, with and without transparency.
+  **Built: byte-exact against ImageMagick on every fixture but `offset-frame` (above). GIF
+  decode has no tolerance to argue about — indices map through a palette — so unlike JPEG
+  these are equality checks by nature, not by effort.**
 - An animated GIF decodes frame 0 with no error.
 - Encode → decode of an image with ≤256 unique colours is byte-exact (the "do not mangle
   what fits" test).
 - A photo quantised with dithering shows no banding on a gradient; with dithering off, it
   does. Both assertions, so the option provably does something.
-- Output opens correctly in a browser and in Preview. Manual, once, but do it — LZW
+
+  **Built: measure the LOCAL AVERAGE, not the run length.** The first version of this test
+  measured the longest run of identical pixels, which barely moved (9 undithered, 8
+  dithered) and nearly got the dithering written off as broken. It was measuring the wrong
+  thing: a ramp gives the diffuser only a few units of error to push around, so it flips a
+  pixel or two per band rather than shattering it.
+
+  What dithering actually does is preserve the average of any small region. Measured on a
+  full-range ramp at 8 colours: the 8×8 window average is out by **8.0 undithered and 1.1
+  dithered**, while per-pixel error moves the *other* way, 8.0 to 10.0. That trade is the
+  whole point, and both directions are asserted so the option cannot be quietly turned into
+  a no-op either way.
+- Output opens correctly in a browser and in Preview. ~~Manual, once, but do it~~ — LZW
   sub-block bugs pass unit tests and fail real viewers.
+
+  **Built: done, and not manually.** Chromium (which is what Obsidian renders with) decoded
+  our output through a canvas and read back exactly what we wrote: a 40×40 with
+  `rgba(0,0,0,0)` outside the shape and red inside, and a 100×40 gradient encoded at
+  `colors: 8` with exactly 8 distinct greys. ImageMagick agrees on both. The concern was
+  right — our own decoder would happily read a private dialect of LZW — but it does not
+  need to stay manual.
 - Semi-transparent input produces hard-edged one-bit transparency, documented, not an error.

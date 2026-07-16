@@ -55,7 +55,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 ## Milestone 4: the rest of the pure JS formats
 
 - [x] [codec-bmp.md](codec-bmp.md) — BMP read and write.
-- [ ] [codec-gif.md](codec-gif.md) — GIF read and write, static frames, quantisation.
+- [x] [codec-gif.md](codec-gif.md) — GIF read and write, static frames, quantisation.
 - [ ] [codec-tiff.md](codec-tiff.md) — TIFF read and write, uncompressed and LZW.
 - [ ] [strip-metadata.md](strip-metadata.md) — EXIF, GPS and ICC removal, per codec.
 - [ ] [format-quality.md](format-quality.md) — `toFormat()` and the quality option.
@@ -68,6 +68,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 ## Milestone 6: the API the plugin actually calls
 
 - [ ] [api-surface.md](api-surface.md) — the chained builder, async shape, entry points.
+  - [ ] **A runnable example, not a test.** Once the SDK exists, add a real script under `examples/` that exercises it end to end the way a consumer would, and link it from the README. It has to be something you can actually run and watch work, separate from the test suite.
 - [ ] [pipeline-order.md](pipeline-order.md) — canonical crop → rotate → flip → resize → format order.
 - [ ] [batch-pipeline.md](batch-pipeline.md) — the reusable, serialisable pipeline object.
 - [ ] [fast-decode.md](fast-decode.md) — downsample during decode for the live preview path.

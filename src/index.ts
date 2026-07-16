@@ -30,6 +30,7 @@ export { FORMATS, type Format } from './core/formats.ts';
 // and wants to skip the sniff (features/api-surface.md).
 export { decodePng, encodePng, probePng } from './core/codecs/png.ts';
 export { decodeBmp, encodeBmp, probeBmp, type BmpEncodeOptions } from './core/codecs/bmp.ts';
+export { decodeGif, encodeGif, probeGif, type GifEncodeOptions } from './core/codecs/gif.ts';
 export {
   decodeJpeg,
   encodeJpeg,
