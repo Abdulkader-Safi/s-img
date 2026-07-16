@@ -10,12 +10,12 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 ---
 
-## Blockers: decide these before writing code
+## Blockers: settled 2026-07-16
 
-- [ ] **Q1. HEIC/HEIF support.** Drop it (like AVIF), or ship it as a second lazy WASM module at 1 to 2 MB? See [heic-decision.md](heic-decision.md).
-- [ ] **Q2. Rotation fill colour.** Configurable with white as the default? See [rotate.md](rotate.md).
-- [ ] **Q3. Sync vs async API.** Async-only for consistency with WebP's dynamic import? See [api-surface.md](api-surface.md).
-- [ ] **Q4. Which libwebp WASM build.** Wrap jSquash's binary, or build a minimal one? See [codec-webp.md](codec-webp.md).
+- [x] **Q1. HEIC/HEIF support.** **Dropped.** libheif is 1 to 2 MB, ~13x the pure JS core. See [heic-decision.md](heic-decision.md).
+- [x] **Q2. Rotation fill colour.** **One shared pipeline-level `background`, default white.** See [rotate.md](rotate.md).
+- [x] **Q3. Sync vs async API.** **Async everywhere.** See [api-surface.md](api-surface.md).
+- [x] **Q4. Which libwebp WASM build.** **Wrap `@jsquash/webp`.** See [codec-webp.md](codec-webp.md).
 
 ---
 
@@ -52,7 +52,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 ## Milestone 4: the rest of the pure JS formats
 
-- [ ] [codec-bmp.md](codec-bmp.md) — BMP read and write.
+- [x] [codec-bmp.md](codec-bmp.md) — BMP read and write.
 - [ ] [codec-gif.md](codec-gif.md) — GIF read and write, static frames, quantisation.
 - [ ] [codec-tiff.md](codec-tiff.md) — TIFF read and write, uncompressed and LZW.
 - [ ] [strip-metadata.md](strip-metadata.md) — EXIF, GPS and ICC removal, per codec.
