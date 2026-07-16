@@ -77,9 +77,9 @@ gzipped size). It is paid only by a caller who touches a WebP, and decode and en
 separate modules so a plugin that only reads WebP never carries the encoder: **66 KB
 gzipped for the decoder, 168 KB for the encoder, and 0 KB for anyone who touches neither.**
 
-Still open: the same path inside a real Obsidian plugin, deferred with
-[plugin-swap.md](plugin-swap.md). The design was chosen to need nothing from its
-environment precisely so that test is a formality — but it is not discharged until it runs.
+Still open: the same path inside a real Obsidian plugin, which lives in the plugin's own
+project rather than here. The design was chosen to need nothing from its environment
+precisely so that test is a formality — but it is not discharged until it runs.
 
 ## Loading
 

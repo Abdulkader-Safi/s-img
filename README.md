@@ -30,7 +30,7 @@ Same editing capability, at a fraction of the size, is the whole point. The budg
 | Core + WebP WASM, when WebP is used        | under 500 KB | ~14x smaller   |
 | The ImageMagick bundle being replaced      | 7 MB         |                |
 
-If the core misses 150 KB, the premise is in trouble. `pnpm check:size` measures it.
+If the core misses 150 KB, the premise is in trouble. `npm run check:size` measures it, and CI fails the build over budget.
 
 ## Status
 
@@ -42,38 +42,41 @@ If the core misses 150 KB, the premise is in trouble. `pnpm check:size` measures
 
 ## Running it
 
-Requires Node 22.18 or newer (the tests rely on its TypeScript type stripping) and pnpm. Bun is optional, and only needed for the parity check.
+Requires Node 22.18 or newer (the tests rely on its TypeScript type stripping). Bun is optional, and only needed for the parity check.
 
 ```bash
-pnpm install
-pnpm check          # tsc strict + guards + tests. The one to run before a commit.
+npm install
+npm run check       # tsc strict + guards + tests. The one to run before a commit.
 ```
 
 Individually:
 
 ```bash
-pnpm build          # tsc to dist/, ESM
-pnpm test           # node --test
-pnpm test:bun       # the Bun half of the Node/Bun parity claim
-pnpm check:guards   # the two boundary rules, see below
-pnpm check:size     # the core bundle against its 150 KB budget
+npm run build         # tsc to dist/, ESM
+npm test              # node --test
+npm run test:bun      # the Bun half of the Node/Bun parity claim
+npm run check:guards  # the two boundary rules, see below
+npm run check:size    # the core bundle against its 150 KB budget
+npm run bench:preview # the preview path's numbers, on a generated 12MP JPEG
 ```
+
+CI runs `check`, `build`, the Bun smoke test and the size gate on every PR.
 
 ## Tests
 
 `node --test`, no framework. Node 22 strips the types, so tests run straight from `.ts` with no build step ahead of them.
 
 ```bash
-pnpm test                          # everything
+npm test                           # everything
 node --test test/guards.test.ts    # one file
 node --test --watch                # on change
 ```
 
-`pnpm test:bun` is deliberately not the full suite. Running the codec tests twice proves little, and Bun's `node:test` support has gaps not worth fighting. It imports the package under Bun and asserts it works, which is the parity claim's foundation. Today that means it loads; it grows into a decode, transform, encode round-trip when PNG lands.
+`npm run test:bun` is deliberately not the full suite. Running the codec tests twice proves little, and Bun's `node:test` support has gaps not worth fighting. It imports the package under Bun and asserts it works, which is the parity claim's foundation. Today that means it loads; it grows into a decode, transform, encode round-trip when PNG lands.
 
 ## The guards
 
-`pnpm check:guards` enforces the mechanical rules the design asserts:
+`npm run check:guards` enforces the mechanical rules the design asserts:
 
 1. **No host access under `src/core/`.** No `fs`, no `Buffer`, no `process`. Pixel code that can't reach the filesystem can't grow a filesystem-shaped bug, needs no mock, and stays portable to a browser build later. `node:zlib` in `codecs/png.ts` is the one exception, and it's what a browser build would swap for `CompressionStream`.
 2. **Every throw is a typed `SImgError`**, so a caller's `instanceof` check is exhaustive.

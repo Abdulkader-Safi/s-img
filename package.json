@@ -17,7 +17,6 @@
   "engines": {
     "node": ">=22.18"
   },
-  "packageManager": "pnpm@10.28.1",
   "scripts": {
     "build": "tsc",
     "test": "node --experimental-test-module-mocks --test 'test/**/*.test.ts'",

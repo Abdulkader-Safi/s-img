@@ -127,8 +127,8 @@ there if it ever matters.)*
 - **What counts as "the bundle".** The library's own code, excluding `node:` builtins,
   excluding the WASM. State it in the config so the number is not arguable.
 - **The plugin's final size** is what actually matters to Sync, and it includes the plugin's
-  own UI code. The library's budget is a proxy. Milestone 7 measures the real thing
-  ([plugin-swap.md](plugin-swap.md)).
+  own UI code. The library's budget is a proxy for it, and a proxy is all this repo can
+  measure -- the swap itself lives in the plugin's own project.
 - **Source maps** are not in the budget. They ship separately or not at all.
 
 ## Acceptance
@@ -137,7 +137,9 @@ there if it ever matters.)*
 - The delta vs the previous commit is printed on every PR.
 - The WebP WASM is provably absent from the core bundle (assert on the file list, not just
   the size).
-- A dynamic `import()` survives the plugin's esbuild config as a real chunk. Verified in
-  milestone 7, and it is the thing most likely to have quietly regressed.
+- A dynamic `import()` survives the plugin's esbuild config as a real chunk. **Done** for
+  this repo's own esbuild config -- `test/bundle-size.test.ts` plants the static import and
+  watches the check fail. Confirming it against the PLUGIN's config belongs to the plugin's
+  project; it is the thing most likely to have quietly regressed.
 - The first measurement happens in **milestone 1**, with just PNG, so the trend line exists
   from the start.
