@@ -50,7 +50,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [x] [codec-bmp.md](codec-bmp.md) — BMP read and write.
 - [x] [codec-gif.md](codec-gif.md) — GIF read and write, static frames, quantisation.
 - [x] [codec-tiff.md](codec-tiff.md) — TIFF read and write, uncompressed and LZW.
-- [ ] [strip-metadata.md](strip-metadata.md) — EXIF, GPS and ICC removal, per codec.
+- [x] [strip-metadata.md](strip-metadata.md) — EXIF, GPS and ICC removal, per codec.
 - [ ] [format-quality.md](format-quality.md) — `toFormat()` and the quality option.
 
 ## Milestone 5: WebP
@@ -61,6 +61,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 ## Milestone 6: the API the plugin actually calls
 
 - [ ] [api-surface.md](api-surface.md) — the chained builder, async shape, entry points.
+  - [ ] **`stripMetadata()` is a byte-for-byte no-op.** [strip-metadata.md](strip-metadata.md) is already true by construction and needs no code; the method is a builder method and belongs here. Its last acceptance item -- calling it and not calling it produce identical output -- can only be asserted once the builder exists.
   - [ ] **A runnable example, not a test.** Once the SDK exists, add a real script under `examples/` that exercises it end to end the way a consumer would, and link it from the README. It has to be something you can actually run and watch work, separate from the test suite.
 - [ ] [pipeline-order.md](pipeline-order.md) — canonical crop → rotate → flip → resize → format order.
 - [ ] [batch-pipeline.md](batch-pipeline.md) — the reusable, serialisable pipeline object.

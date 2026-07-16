@@ -45,5 +45,18 @@ for n in 1 2 3 4 5 6 7 8; do gen "$n"; done
 # hardcodes little-endian reads orientation 6 as 1536 and silently does nothing.
 gen 6 MM
 
+# A photo with the location still in it: the privacy case features/strip-metadata.md is
+# actually about. No .rgba -- the pixels are src.jpg's and are not what this one is for.
+#
+# Checked with exifr, not trusted, because the failure mode is silent and total: a fixture
+# with no readable GPS in it sails through a "no GPS out" test while proving nothing.
+node splice-gps.mjs src.jpg gps.jpg
+found="$(node -e "import('exifr').then(async m=>{const g=await m.default.gps(require('fs').readFileSync('gps.jpg'));process.stdout.write(g?g.latitude.toFixed(4)+','+g.longitude.toFixed(4):'none')})")"
+if [ "$found" != "33.8938,35.5018" ]; then
+  echo "FAIL: exifr read '${found}' from gps.jpg, expected 33.8938,35.5018" >&2
+  exit 1
+fi
+printf '%-14s exifr reads %s\n' "gps" "$found"
+
 echo
 echo "regenerated. commit the .jpg and .rgba files."
