@@ -8,6 +8,7 @@
 export {
   SImgError,
   CorruptImageError,
+  ImageTooLargeError,
   InvalidOptionError,
   UnsupportedFormatError,
   type SImgErrorCode,
@@ -27,3 +28,4 @@ export { flip, type FlipOptions } from './core/transform/flip.ts';
 export { rotate90 } from './core/transform/rotate90.ts';
 export { resize, maxLongEdge, type ResizeOptions } from './core/transform/resize.ts';
 export { type Resampling } from './core/transform/resample.ts';
+export { rotate, type RotateOptions } from './core/transform/rotate.ts';

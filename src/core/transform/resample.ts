@@ -176,14 +176,14 @@ function weigh(x: number, kernel: Resampling): number {
 }
 
 /** Cheap scan: most photos are fully opaque and can skip premultiply entirely. */
-function hasAlpha(img: RawImage): boolean {
+export function hasAlpha(img: RawImage): boolean {
   for (let i = 3; i < img.data.length; i += 4) {
     if (img.data[i] !== 255) return true;
   }
   return false;
 }
 
-function premultiply(img: RawImage): RawImage {
+export function premultiply(img: RawImage): RawImage {
   const out = createImage(img.width, img.height);
   for (let i = 0; i < img.data.length; i += 4) {
     const a = img.data[i + 3]! / 255;
@@ -195,7 +195,7 @@ function premultiply(img: RawImage): RawImage {
   return out;
 }
 
-function unpremultiply(img: RawImage): RawImage {
+export function unpremultiply(img: RawImage): RawImage {
   const out = createImage(img.width, img.height);
   for (let i = 0; i < img.data.length; i += 4) {
     const a = img.data[i + 3]!;

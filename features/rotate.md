@@ -152,10 +152,14 @@ bar.
   ([pipeline-order.md](pipeline-order.md)), which sidesteps this, but a caller doing two
   `.toBuffer()` round-trips will see it. Document it.
 - **A fully transparent source.** Fine, produces a transparent output.
-- **Extreme aspect ratios.** A 20000×1 rotated 45° has a ~14000×14000 bounding box, which
-  is 800 MB. The `maxPixels` guard from [decode.md](decode.md) needs to apply to the
-  *computed rotate output* too, not just to decode. Otherwise a legal input and a legal
-  angle OOM the process. Easy to miss; test it.
+- **Extreme aspect ratios.** A 20000×1 rotated 45° has a 14143×14143 bounding box: 200M
+  pixels, 0.75 GB. The `maxPixels` guard from [decode.md](decode.md) must apply to the
+  *computed rotate output*, not just to decode, or a legal input and a legal angle OOM the
+  process. Easy to miss; test it.
+
+  Building this exposed that the cap's stated default (`20000 * 20000` = 400M pixels)
+  was *higher* than this case, so the guard would never have fired. The default is now
+  134M pixels / 512 MB. See [decode.md](decode.md).
 
 ## Acceptance
 

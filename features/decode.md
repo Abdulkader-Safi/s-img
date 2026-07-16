@@ -15,7 +15,7 @@ interface DecodeOptions {
   maxLongEdge?: number;
   /** Skip the format sniff and force a codec. Escape hatch, rarely correct. */
   format?: Format;
-  /** Refuse to allocate a canvas larger than this many pixels. Default 20000 * 20000. */
+  /** Refuse to allocate a canvas larger than this many pixels. Default 128 * 1024 * 1024. */
   maxPixels?: number;
 }
 ```
@@ -48,6 +48,20 @@ than silently trusting either one. A caller who genuinely wants to force a codec
 the header is doing something exotic enough to deserve an explicit error first.
 
 ## The size guard, before allocation
+
+**Default cap: 134M pixels (512 MB of RGBA).** This originally read `20000 * 20000`, which
+was wrong and was caught while building `feat/rotate`: that is 400M pixels / 1.49 GB, and it
+permits precisely the allocations the guard exists to stop. Two of this repo's own specs
+proved it. [raw-image.md](raw-image.md) calls 20000x20000 (1.6 GB) "past what a V8 typed
+array will comfortably hold", so the cap allowed an image the spec calls unusable. And
+[rotate.md](rotate.md) requires a 20000x1 rotated 45 degrees to throw, but its bounding box
+is 14143x14143 = 200M pixels = 0.75 GB, which is *under* 400M. A cap that allows what it is
+meant to prevent is not a cap.
+
+134M clears any realistic photo (a 100MP scan is 400 MB) while catching both cases. Note
+this is deliberately independent of `resize`'s 1-20000 per-dimension clamp: a caller who
+explicitly asks to resize to 20000x20000 has said what they want, whereas a hostile header
+has not.
 
 Every container declares its dimensions in the header. Read them, multiply, compare against
 `maxPixels`, throw `IMAGE_TOO_LARGE` **before** allocating the pixel buffer. A 30-byte BMP

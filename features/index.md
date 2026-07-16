@@ -48,7 +48,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 
 ## Milestone 3: the hard one
 
-- [ ] [rotate.md](rotate.md) — arbitrary-angle rotation, resampled, growing canvas, fill strategy.
+- [x] [rotate.md](rotate.md) — arbitrary-angle rotation, resampled, growing canvas, fill strategy.
 
 ## Milestone 4: the rest of the pure JS formats
 
