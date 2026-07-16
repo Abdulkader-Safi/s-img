@@ -44,6 +44,12 @@ ticked; the handful of open sub-items under them are recorded gaps, not surprise
 `docs/superpowers/specs/2026-07-16-s-img-setup-design.md` records the decisions those specs
 left open, including why HEIC was dropped and why the whole API is async.
 
+**[Full documentation is in the wiki](https://github.com/Abdulkader-Safi/s-img/wiki)** —
+[Getting Started](https://github.com/Abdulkader-Safi/s-img/wiki/Getting-Started),
+[API Reference](https://github.com/Abdulkader-Safi/s-img/wiki/API-Reference),
+[Formats](https://github.com/Abdulkader-Safi/s-img/wiki/Formats),
+[Previews and Performance](https://github.com/Abdulkader-Safi/s-img/wiki/Previews-and-Performance).
+
 ## Install
 
 Not on npm yet. Install it straight from GitHub:
