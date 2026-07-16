@@ -32,10 +32,7 @@ the list is sorted so each item's dependencies are already ticked above it.
       *(Split out because decode needs `Format` before it can have a signature, and
       decode with no codec to dispatch to is nothing. Identifying HEIC by name for the
       error message lands with feat/decode, where the error is built.)*
-- [ ] [codec-png.md](codec-png.md) — PNG read and write on Node's `zlib`.
-      **Do this before decode/encode**: the dispatch layer needs something to dispatch to,
-      and PNG is the lossless round-trip every later feature gets tested against.
-      Carries the `node:zlib`-in-an-Obsidian-renderer check (see below).
+- [x] [codec-png.md](codec-png.md) — PNG read and write on Node’s `zlib`. Verified byte-identical to libpng on 120 real system PNGs.
 - [ ] [decode.md](decode.md) — `decode(bytes, opts)`, the size guard, codec dispatch.
 - [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
 - [ ] [resampling.md](resampling.md) — nearest, bilinear, Lanczos-3 kernels, shared by resize and rotate.

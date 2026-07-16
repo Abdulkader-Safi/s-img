@@ -16,3 +16,8 @@ export {
 export { createImage, assertValidImage, copyImage, type RawImage, type RGBA } from './core/image.ts';
 
 export { FORMATS, type Format } from './core/formats.ts';
+
+// Codec-level entry points. `decode`/`encode` will dispatch to these once they land;
+// they stay exported as the low-level door for a caller who already knows the format
+// and wants to skip the sniff (features/api-surface.md).
+export { decodePng, encodePng, probePng } from './core/codecs/png.ts';
