@@ -66,6 +66,27 @@ export class InvalidOptionError extends SImgError {
   }
 }
 
+/**
+ * A canvas larger than the cap. Thrown BEFORE allocating, which is the whole point:
+ * a 30-byte header can claim 60000x60000, and a decoder that allocates first and
+ * validates second is a one-line denial of service against anyone who opens an
+ * attachment folder. It applies to computed sizes too -- a 20000x1 image rotated 45
+ * degrees asks for a ~14000x14000 canvas from entirely legal inputs.
+ */
+export class ImageTooLargeError extends SImgError {
+  readonly pixels: number;
+  readonly limit: number;
+
+  constructor(width: number, height: number, limit: number) {
+    super(
+      'IMAGE_TOO_LARGE',
+      `Image is ${width}x${height} (${width * height} pixels), over the ${limit}-pixel limit.`,
+    );
+    this.pixels = width * height;
+    this.limit = limit;
+  }
+}
+
 /** Nothing we can read. Carries the magic bytes, which is what makes a bug report fixable. */
 export class UnsupportedFormatError extends SImgError {
   /** The first 12 bytes as space-separated hex, or `''` for an empty input. */

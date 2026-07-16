@@ -17,6 +17,9 @@
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
+    // A dead import survived an optimisation pass here and had to be spotted by eye.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
 
