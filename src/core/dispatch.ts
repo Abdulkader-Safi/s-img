@@ -16,6 +16,7 @@ import { decodeGif, encodeGif, probeGif, type GifEncodeOptions } from './codecs/
 import { decodeJpeg, encodeJpeg, probeJpeg, readExifOrientation, type JpegEncodeOptions } from './codecs/jpeg.ts';
 import { decodePng, encodePng, probePng } from './codecs/png.ts';
 import { decodeTiff, encodeTiff, probeTiff, type TiffEncodeOptions } from './codecs/tiff.ts';
+import { decodeWebp, encodeWebp, preloadWebp, probeWebp, type WebpEncodeOptions } from './codecs/webp.ts';
 import { ImageTooLargeError, InvalidOptionError, SImgError, UnsupportedFormatError } from './errors.ts';
 import { sniff, type Format } from './formats.ts';
 import { assertValidImage, DEFAULT_MAX_PIXELS, type RawImage } from './image.ts';
@@ -41,13 +42,20 @@ export type EncodeOptions<F extends Format> = F extends 'jpeg'
       ? BmpEncodeOptions
       : F extends 'tiff'
         ? TiffEncodeOptions
-        : Record<string, never>;
+        : F extends 'webp'
+          ? WebpEncodeOptions
+          : Record<string, never>;
 
 interface Codec {
-  /** Header only. What makes both the size guard and a downsample plan possible. */
+  /**
+   * Header only, and SYNCHRONOUS even for WebP. That is not an accident: the size guard
+   * has to reject a hostile file before any bytes reach a WASM heap that grows in pages
+   * and fails ungracefully, so probe cannot be allowed to need the module it protects.
+   */
   probe(bytes: Uint8Array): { width: number; height: number };
-  decode(bytes: Uint8Array): RawImage;
-  encode(image: RawImage, opts: never): Uint8Array;
+  /** Async only for WebP, whose codec arrives via dynamic import. The rest return directly. */
+  decode(bytes: Uint8Array): RawImage | Promise<RawImage>;
+  encode(image: RawImage, opts: never): Uint8Array | Promise<Uint8Array>;
   /**
    * Every option this format understands. The types above already say this, and say it
    * better -- but types do not survive JSON.parse, and the batch pipeline is explicitly
@@ -60,9 +68,9 @@ interface Codec {
 }
 
 /**
- * The dispatch table. `webp` is deliberately absent: its codec is a lazily-loaded WASM
- * module and lands in features/codec-webp.md. Until then, asking for one produces the
- * same UNSUPPORTED_FORMAT as asking for a HEIC -- which is honest.
+ * The dispatch table. Every entry but webp is pure TypeScript and always loaded; webp's
+ * WASM is behind a dynamic import inside its own module, so naming it here costs nothing
+ * until someone actually touches a WebP.
  */
 const CODECS: Partial<Record<Format, Codec>> = {
   // No options at all, which is the point: `quality` on a lossless format is a lie the
@@ -73,7 +81,19 @@ const CODECS: Partial<Record<Format, Codec>> = {
   gif: { probe: probeGif, decode: decodeGif, encode: encodeGif, options: ['colors', 'dither'] },
   bmp: { probe: probeBmp, decode: decodeBmp, encode: encodeBmp, options: ['background'] },
   tiff: { probe: probeTiff, decode: decodeTiff, encode: encodeTiff, options: ['compression'] },
+  // No `background`: WebP has real alpha, so there is nothing to composite onto.
+  webp: { probe: probeWebp, decode: decodeWebp, encode: encodeWebp, options: ['quality', 'lossless'] },
 };
+
+/**
+ * Warm a lazily-loaded codec so the first image open is not a visible stall.
+ *
+ * Only webp has anything to load; the rest resolve immediately rather than throwing, so a
+ * plugin can preload its whole preset list without knowing which formats are WASM-backed.
+ */
+export async function preload(format: Format): Promise<void> {
+  if (format === 'webp') await preloadWebp();
+}
 
 /**
  * Bytes in, RGBA out. Sniffs the format, guards the size, dispatches to a codec.
@@ -112,7 +132,7 @@ export async function decode(bytes: Uint8Array, opts: DecodeOptions = {}): Promi
   const maxPixels = opts.maxPixels ?? DEFAULT_MAX_PIXELS;
   if (width * height > maxPixels) throw new ImageTooLargeError(width, height, maxPixels);
 
-  const image = codec.decode(bytes);
+  const image = await codec.decode(bytes);
   // The seam assertValidImage was written for. No codec here can currently fail it --
   // each validates its own header, and a 0-width BMP throws CORRUPT_IMAGE long before
   // this line -- so it is deliberately an unreachable assertion today. It stays because
@@ -180,7 +200,7 @@ export async function encode<F extends Format>(
   }
 
   try {
-    return codec.encode(image, (opts ?? {}) as never);
+    return await codec.encode(image, (opts ?? {}) as never);
   } catch (cause) {
     // Never let a raw RangeError from a typed-array write escape the boundary. An
     // SImgError from the codec is already the contract -- an out-of-range quality is an
