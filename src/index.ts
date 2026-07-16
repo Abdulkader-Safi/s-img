@@ -26,6 +26,8 @@ export {
 export { FORMATS, sniff, type Format } from './core/formats.ts';
 export { supportedFormats, type FormatSupport } from './core/supported.ts';
 export { decode, encode, preload, type DecodeOptions, type EncodeOptions } from './core/dispatch.ts';
+export { SImg, SImgChain, Pipeline } from './core/simg.ts';
+export { applySpec, validateSpec, type PipelineSpec, type ResizeStage } from './core/pipeline.ts';
 
 // Codec-level entry points. `decode`/`encode` will dispatch to these once they land;
 // they stay exported as the low-level door for a caller who already knows the format
