@@ -12,3 +12,5 @@ export {
   UnsupportedFormatError,
   type SImgErrorCode,
 } from './core/errors.ts';
+
+export { createImage, assertValidImage, copyImage, type RawImage, type RGBA } from './core/image.ts';

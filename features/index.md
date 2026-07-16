@@ -26,7 +26,7 @@ the list is sorted so each item's dependencies are already ticked above it.
       and errors.md bans a bare `throw new Error(` anywhere in the codebase. Errors has no
       dependencies of its own. `CodecLoadError` is deliberately absent until
       `feat/codec-webp`, which is when the `Format` type it carries will exist.)*
-- [ ] [raw-image.md](raw-image.md) — the `RawImage` pixel buffer type, the one currency the whole library trades in.
+- [x] [raw-image.md](raw-image.md) — the `RawImage` pixel buffer type, the one currency the whole library trades in.
 - [ ] [decode.md](decode.md) — `decode(bytes, opts)`, magic-byte sniffing, codec dispatch.
 - [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
 - [ ] [codec-png.md](codec-png.md) — PNG read and write on Node's `zlib`.
