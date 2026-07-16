@@ -22,6 +22,7 @@ export { FORMATS, type Format } from './core/formats.ts';
 // they stay exported as the low-level door for a caller who already knows the format
 // and wants to skip the sniff (features/api-surface.md).
 export { decodePng, encodePng, probePng } from './core/codecs/png.ts';
+export { decodeBmp, encodeBmp, probeBmp, type BmpEncodeOptions } from './core/codecs/bmp.ts';
 
 export { crop, type CropOptions } from './core/transform/crop.ts';
 export { flip, type FlipOptions } from './core/transform/flip.ts';
