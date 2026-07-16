@@ -35,8 +35,8 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [x] [codec-png.md](codec-png.md) — PNG read and write on Node’s `zlib`. Verified byte-identical to libpng on 120 real system PNGs.
 - [ ] [decode.md](decode.md) — `decode(bytes, opts)`, the size guard, codec dispatch.
 - [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
-- [ ] [resampling.md](resampling.md) — nearest, bilinear, Lanczos-3 kernels, shared by resize and rotate.
-- [ ] [resize.md](resize.md) — `resize({ width, height, upscale, fit })`.
+- [x] [resampling.md](resampling.md) — nearest, bilinear, Lanczos-3 kernels, shared by resize and rotate.
+- [x] [resize.md](resize.md) — `resize({ width, height, upscale, fit })`.
 - [x] [crop.md](crop.md) — `crop({ x, y, width, height })`.
 
 ## Milestone 2: JPEG, cheap transforms, preset resize
@@ -44,7 +44,7 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [ ] [codec-jpeg.md](codec-jpeg.md) — baseline DCT read and write.
 - [x] [rotate-90.md](rotate-90.md) — exact 90° step rotation, no resampling.
 - [x] [flip.md](flip.md) — horizontal and vertical mirroring.
-- [ ] [max-long-edge.md](max-long-edge.md) — shrink-only preset resize.
+- [x] [max-long-edge.md](max-long-edge.md) — shrink-only preset resize.
 
 ## Milestone 3: the hard one
 
