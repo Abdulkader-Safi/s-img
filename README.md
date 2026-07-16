@@ -24,11 +24,11 @@ Sync can't run the plugin.
 
 Same editing capability, at a fraction of the size, is the whole point. The budget:
 
-| | Size | vs ImageMagick |
-|---|---|---|
-| Core (PNG, JPEG, GIF, BMP, TIFF), min+gzip | under 150 KB | ~47x smaller |
-| Core + WebP WASM, when WebP is used | under 500 KB | ~14x smaller |
-| The ImageMagick bundle being replaced | 7 MB | |
+|                                            | Size         | vs ImageMagick |
+| ------------------------------------------ | ------------ | -------------- |
+| Core (PNG, JPEG, GIF, BMP, TIFF), min+gzip | under 150 KB | ~47x smaller   |
+| Core + WebP WASM, when WebP is used        | under 500 KB | ~14x smaller   |
+| The ImageMagick bundle being replaced      | 7 MB         |                |
 
 If the core misses 150 KB, the premise is in trouble. `pnpm check:size` measures it.
 
@@ -36,16 +36,13 @@ If the core misses 150 KB, the premise is in trouble. `pnpm check:size` measures
 
 **Nothing is built yet.** The design is done and the toolchain runs. The code starts now.
 
-`features/index.md` is the plan: 30 features, one file each, ordered by milestone so every
-dependency lands before the thing that needs it. Each unchecked box is one branch.
+`features/index.md` is the plan: 30 features, one file each, ordered by milestone so every dependency lands before the thing that needs it. Each unchecked box is one branch.
 
-`docs/superpowers/specs/2026-07-16-s-img-setup-design.md` records the decisions those specs
-left open, including why HEIC was dropped and why the whole API is async.
+`docs/superpowers/specs/2026-07-16-s-img-setup-design.md` records the decisions those specs left open, including why HEIC was dropped and why the whole API is async.
 
 ## Running it
 
-Requires Node 22.18 or newer (the tests rely on its TypeScript type stripping) and pnpm.
-Bun is optional, and only needed for the parity check.
+Requires Node 22.18 or newer (the tests rely on its TypeScript type stripping) and pnpm. Bun is optional, and only needed for the parity check.
 
 ```bash
 pnpm install
@@ -64,8 +61,7 @@ pnpm check:size     # the core bundle against its 150 KB budget
 
 ## Tests
 
-`node --test`, no framework. Node 22 strips the types, so tests run straight from `.ts` with
-no build step ahead of them.
+`node --test`, no framework. Node 22 strips the types, so tests run straight from `.ts` with no build step ahead of them.
 
 ```bash
 pnpm test                          # everything
@@ -73,29 +69,18 @@ node --test test/guards.test.ts    # one file
 node --test --watch                # on change
 ```
 
-`pnpm test:bun` is deliberately not the full suite. Running the codec tests twice proves
-little, and Bun's `node:test` support has gaps not worth fighting. It imports the package
-under Bun and asserts it works, which is the parity claim's foundation. Today that means it
-loads; it grows into a decode, transform, encode round-trip when PNG lands.
+`pnpm test:bun` is deliberately not the full suite. Running the codec tests twice proves little, and Bun's `node:test` support has gaps not worth fighting. It imports the package under Bun and asserts it works, which is the parity claim's foundation. Today that means it loads; it grows into a decode, transform, encode round-trip when PNG lands.
 
 ## The guards
 
 `pnpm check:guards` enforces the mechanical rules the design asserts:
 
-1. **No host access under `src/core/`.** No `fs`, no `Buffer`, no `process`. Pixel code that
-   can't reach the filesystem can't grow a filesystem-shaped bug, needs no mock, and stays
-   portable to a browser build later. `node:zlib` in `codecs/png.ts` is the one exception,
-   and it's what a browser build would swap for `CompressionStream`.
+1. **No host access under `src/core/`.** No `fs`, no `Buffer`, no `process`. Pixel code that can't reach the filesystem can't grow a filesystem-shaped bug, needs no mock, and stays portable to a browser build later. `node:zlib` in `codecs/png.ts` is the one exception, and it's what a browser build would swap for `CompressionStream`.
 2. **Every throw is a typed `SImgError`**, so a caller's `instanceof` check is exhaustive.
-3. **The emitted JS never imports a `.ts` path.** Source uses `.ts` specifiers and `tsc`
-   rewrites them on emit. Lose that and the published package crashes on import for
-   everyone, while the suite stays green, because tests run from source.
+3. **The emitted JS never imports a `.ts` path.** Source uses `.ts` specifiers and `tsc` rewrites them on emit. Lose that and the published package crashes on import for everyone, while the suite stays green, because tests run from source.
 4. **No `any` in the emitted `.d.ts`.**
 
-Four rules is not an eslint config. They're greps, in `scripts/guards.mjs`, and each has a
-test that watches it fail on purpose. That isn't ceremony: the first version of guard 1
-reported clean on a real violation, because stripping string literals to protect prose also
-deleted the import specifiers it was hunting for.
+Four rules is not an eslint config. They're greps, in `scripts/guards.mjs`, and each has a test that watches it fail on purpose. That isn't ceremony: the first version of guard 1 reported clean on a real violation, because stripping string literals to protect prose also deleted the import specifiers it was hunting for.
 
 ## Layout
 
@@ -111,16 +96,11 @@ scripts/        guards.mjs, size.mjs
 features/       the design, one file per feature
 ```
 
-Operations always apply in a fixed order (crop, rotate, flip, resize, format) no matter what
-order they were called in. That's not a convenience. Resize-then-crop cuts the wrong region
-and doesn't throw doing it. `features/pipeline-order.md` has the reasoning.
+Operations always apply in a fixed order (crop, rotate, flip, resize, format) no matter what order they were called in. That's not a convenience. Resize-then-crop cuts the wrong region and doesn't throw doing it. `features/pipeline-order.md` has the reasoning.
 
 ## Not in v1
 
-No browser build, though the core wouldn't change and the `src/core` boundary exists to keep
-that true. No AVIF, since no pure JS AV1 codec exists anywhere. No HEIC: libheif is 1 to 2
-MB, roughly 13x the entire pure JS core, against a project whose reason to exist is a size
-budget. No animated GIF. No preset storage or UI state, which stay in the plugin.
+No browser build, though the core wouldn't change and the `src/core` boundary exists to keep that true. No AVIF, since no pure JS AV1 codec exists anywhere. No HEIC: libheif is 1 to 2 MB, roughly 13x the entire pure JS core, against a project whose reason to exist is a size budget. No animated GIF. No preset storage or UI state, which stay in the plugin.
 
 Each of those has a file in `features/` recording what would bring it back.
 
