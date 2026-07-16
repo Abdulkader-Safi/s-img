@@ -37,13 +37,13 @@ the list is sorted so each item's dependencies are already ticked above it.
 - [ ] [encode.md](encode.md) — `encode(image, format, opts)`, the mirror of decode.
 - [ ] [resampling.md](resampling.md) — nearest, bilinear, Lanczos-3 kernels, shared by resize and rotate.
 - [ ] [resize.md](resize.md) — `resize({ width, height, upscale, fit })`.
-- [ ] [crop.md](crop.md) — `crop({ x, y, width, height })`.
+- [x] [crop.md](crop.md) — `crop({ x, y, width, height })`.
 
 ## Milestone 2: JPEG, cheap transforms, preset resize
 
 - [ ] [codec-jpeg.md](codec-jpeg.md) — baseline DCT read and write.
-- [ ] [rotate-90.md](rotate-90.md) — exact 90° step rotation, no resampling.
-- [ ] [flip.md](flip.md) — horizontal and vertical mirroring.
+- [x] [rotate-90.md](rotate-90.md) — exact 90° step rotation, no resampling.
+- [x] [flip.md](flip.md) — horizontal and vertical mirroring.
 - [ ] [max-long-edge.md](max-long-edge.md) — shrink-only preset resize.
 
 ## Milestone 3: the hard one
